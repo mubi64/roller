@@ -1,0 +1,204 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-07-22 16:58:45.187873",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "integration_tab",
+  "authentication_section",
+  "environment",
+  "playground_url",
+  "live_url",
+  "column_break_zqvw",
+  "client_id",
+  "client_secret",
+  "access_token",
+  "get_access_token",
+  "defaults_tab",
+  "default_company",
+  "default_mode_of_payment",
+  "default_customer",
+  "default_sales_taxes_and_charges_template",
+  "column_break_yydf",
+  "data_tab",
+  "customers_data_section",
+  "fetch_customers",
+  "column_break_arvs",
+  "customer_start_date",
+  "customer_end_date",
+  "products_data_section",
+  "fetch_products",
+  "column_break_uycc"
+ ],
+ "fields": [
+  {
+   "fieldname": "authentication_section",
+   "fieldtype": "Section Break",
+   "label": "Authentication"
+  },
+  {
+   "default": "Playground",
+   "fieldname": "environment",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Environment",
+   "options": "Playground\nLive",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_zqvw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Client Id",
+   "reqd": 1
+  },
+  {
+   "fieldname": "client_secret",
+   "fieldtype": "Data",
+   "label": "Client Secret",
+   "reqd": 1
+  },
+  {
+   "default": "https://api.play.roller.app",
+   "fieldname": "playground_url",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Playground Url",
+   "reqd": 1
+  },
+  {
+   "default": "https://api.roller.app",
+   "fieldname": "live_url",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Live Url",
+   "reqd": 1
+  },
+  {
+   "fieldname": "get_access_token",
+   "fieldtype": "Button",
+   "label": "Get Access Token"
+  },
+  {
+   "fieldname": "access_token",
+   "fieldtype": "Data",
+   "label": "Access Token",
+   "read_only": 1
+  },
+  {
+   "fieldname": "integration_tab",
+   "fieldtype": "Tab Break",
+   "label": "Integration"
+  },
+  {
+   "fieldname": "data_tab",
+   "fieldtype": "Tab Break",
+   "label": "Data"
+  },
+  {
+   "fieldname": "customers_data_section",
+   "fieldtype": "Section Break",
+   "label": "Customers Data"
+  },
+  {
+   "fieldname": "customer_start_date",
+   "fieldtype": "Date",
+   "label": "Customer Start Date"
+  },
+  {
+   "fieldname": "customer_end_date",
+   "fieldtype": "Date",
+   "label": "Customer End Date"
+  },
+  {
+   "fieldname": "column_break_arvs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "fetch_customers",
+   "fieldtype": "Button",
+   "label": "Fetch Customers"
+  },
+  {
+   "fieldname": "products_data_section",
+   "fieldtype": "Section Break",
+   "label": "Products Data"
+  },
+  {
+   "fieldname": "column_break_uycc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "fetch_products",
+   "fieldtype": "Button",
+   "label": "Fetch Products"
+  },
+  {
+   "fieldname": "defaults_tab",
+   "fieldtype": "Tab Break",
+   "label": "Defaults"
+  },
+  {
+   "fieldname": "default_customer",
+   "fieldtype": "Link",
+   "label": "Default Customer",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_yydf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "default_sales_taxes_and_charges_template",
+   "fieldtype": "Link",
+   "label": "Default Sales Taxes and Charges Template",
+   "options": "Sales Taxes and Charges Template",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_mode_of_payment",
+   "fieldtype": "Link",
+   "label": "Default Mode of Payment",
+   "options": "Mode of Payment",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_company",
+   "fieldtype": "Link",
+   "label": "Default Company",
+   "options": "Company",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-07-23 15:47:39.629274",
+ "modified_by": "Administrator",
+ "module": "Roller",
+ "name": "Roller Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -91,6 +91,10 @@ app_license = "mit"
 # before_uninstall = "roller.uninstall.before_uninstall"
 # after_uninstall = "roller.uninstall.after_uninstall"
 
+after_migrate = [
+    "roller.setup.setup_hooks.set_customer_naming_series"
+]
+
 # Integration Setup
 # ------------------
 # To set up dependencies/integrations with other apps
@@ -241,4 +245,15 @@ app_license = "mit"
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
+
+fixtures = [
+	{
+        "doctype":"Custom Field",
+		"filters":[
+			[
+				"module", "=", "Roller"
+			]
+		]
+	}
+]
 
