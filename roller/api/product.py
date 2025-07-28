@@ -18,7 +18,7 @@ def fetch_products_from_roller():
     page = 1
     page_size = 500
     retried = False  # Flag to track if we've retried
-
+    frappe.logger().info("Started product sync.")
     while True:
         url = f"{base_url}/data/products?pageSize={page_size}&pageNumber={page}"
         response = requests.get(url, headers=_get_headers(access_token))
@@ -46,6 +46,7 @@ def fetch_products_from_roller():
             frappe.throw(_("Roller API Error: {0}").format(message))
 
         data = response.json()
+        frappe.logger().info("Processing page {} with {} products".format(page, len(data.get("items", []))))
         for product in data.get("items", []):
             create_or_update_item(product)
 
@@ -54,6 +55,7 @@ def fetch_products_from_roller():
 
         page += 1
 
+    frappe.logger().info("Product sync completed.")
     return "Products successfully synced from Roller."
 
 

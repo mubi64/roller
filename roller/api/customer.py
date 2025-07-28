@@ -33,6 +33,7 @@ def fetch_customers_from_roller():
         settings.customer_end_date = end_date
         settings.save(ignore_permissions=True)
 
+    frappe.logger().info("Customer sync completed until {}.".format(today))
     return "Customer sync completed until today."
 
 
@@ -44,7 +45,7 @@ def fetch_and_save_customers(start_date, end_date, settings):
     page_number = 1
     page_size = 500
     retried = False  # Flag to track if we've retried
-
+    frappe.logger().info("Started customer sync for dates: {} to {}".format(start_date, end_date))
     while True:
         url = (
             f"{base_url}/data/customers?"
@@ -92,6 +93,8 @@ def fetch_and_save_customers(start_date, end_date, settings):
             data = response.json()
             customers = data.get("items", [])
 
+            frappe.logger().info("Processing {} customers on page {}".format(len(customers), page_number))
+            
             for c in customers:
                 save_customer_to_erpnext(c)
 

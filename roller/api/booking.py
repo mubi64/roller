@@ -248,6 +248,7 @@ def fetch_bookings_from_roller():
     retried = False  # Flag to track if we've retried
     all_items = []
 
+    frappe.logger().info("Started booking sync for dates: {} to {}".format(start_date, end_date))
     while True:
         params = {
             "pageNumber": page_number,
@@ -315,6 +316,7 @@ def fetch_bookings_from_roller():
         if frappe.db.exists("Roller Booking", {"booking_reference": booking_reference}):
             continue
 
+        frappe.logger().info("Processing booking reference: {}".format(booking_reference))
         first = items[0]
         booking = {
             "amountOwing": 0.0,
@@ -373,6 +375,7 @@ def fetch_bookings_from_roller():
         make_invoice_from_roller_booking(doc.name)
         # frappe.db.commit()
 
+    frappe.logger().info("Bookings sync completed from {} to {}.".format(start_date, end_date))
     return "Bookings sync completed for given dates."
         
 

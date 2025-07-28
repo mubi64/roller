@@ -89,7 +89,7 @@
   {
    "fieldname": "get_access_token",
    "fieldtype": "Button",
-   "label": "Get Access Token"
+   "label": "\ud83d\udd10 Get Access Token"
   },
   {
    "fieldname": "access_token",
@@ -129,12 +129,12 @@
   {
    "fieldname": "fetch_customers",
    "fieldtype": "Button",
-   "label": "Fetch Customers"
+   "label": "\ud83d\udd04 Fetch Customers"
   },
   {
    "fieldname": "fetch_products",
    "fieldtype": "Button",
-   "label": "Fetch Products"
+   "label": "\ud83d\udd04 Fetch Products"
   },
   {
    "fieldname": "defaults_tab",
@@ -196,7 +196,7 @@
   {
    "fieldname": "fetch_bookings",
    "fieldtype": "Button",
-   "label": "Fetch Bookings"
+   "label": "\ud83d\udd04 Fetch Bookings"
   },
   {
    "fieldname": "column_break_xiqz",
@@ -229,7 +229,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-07-28 09:30:53.534985",
+ "modified": "2025-07-28 10:18:22.589562",
  "modified_by": "Administrator",
  "module": "Roller",
  "name": "Roller Settings",

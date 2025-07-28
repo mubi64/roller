@@ -1,17 +1,22 @@
 {
  "charts": [],
- "content": "[{\"id\":\"bbbNv6wzf2\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Roller</span>\",\"col\":12}},{\"id\":\"KkT_bpCGul\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Roller Settings \u2699\ufe0f\",\"col\":3}},{\"id\":\"GtKBdWLNcR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Roller Webhook \ud83e\ude9d\",\"col\":3}},{\"id\":\"qYGbbjMFTM\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"T4uoeNFwMQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"VVl6MM_nVa\",\"type\":\"card\",\"data\":{\"card_name\":\"Transactions\",\"col\":4}}]",
+ "content": "[{\"id\":\"ICnarFFrc5\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Roller\",\"col\":12}},{\"id\":\"KkT_bpCGul\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Roller Settings \u2699\ufe0f\",\"col\":3}},{\"id\":\"GtKBdWLNcR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Roller Webhook \ud83c\udf00\",\"col\":3}},{\"id\":\"qYGbbjMFTM\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"T4uoeNFwMQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"VVl6MM_nVa\",\"type\":\"card\",\"data\":{\"card_name\":\"Transactions\",\"col\":4}}]",
  "creation": "2025-07-28 07:42:39.762088",
- "custom_blocks": [],
+ "custom_blocks": [
+  {
+   "custom_block_name": "Roller",
+   "label": "Roller"
+  }
+ ],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
  "hide_custom": 0,
  "icon": "integration",
  "idx": 0,
- "indicator_color": "green",
+ "indicator_color": "",
  "is_hidden": 0,
- "label": "Roller",
+ "label": "Roller ",
  "links": [
   {
    "hidden": 0,
@@ -72,10 +77,10 @@
    "type": "Link"
   }
  ],
- "modified": "2025-07-28 07:48:19.745606",
+ "modified": "2025-07-28 10:13:43.081702",
  "modified_by": "Administrator",
  "module": "Roller",
- "name": "Roller",
+ "name": "Roller ",
  "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
@@ -94,11 +99,11 @@
   {
    "color": "Grey",
    "doc_view": "List",
-   "label": "Roller Webhook \ud83e\ude9d",
+   "label": "Roller Webhook \ud83c\udf00",
    "link_to": "Roller Webhook",
    "stats_filter": "[]",
    "type": "DocType"
   }
  ],
- "title": "Roller"
+ "title": "Roller "
 }

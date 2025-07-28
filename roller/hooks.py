@@ -246,6 +246,15 @@ after_migrate = [
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+scheduler_events = {
+    "cron": {
+        "0 5 * * *": [
+            "roller.tasks.fetch_data_from_roller"
+        ]
+    }
+}
+
+
 fixtures = [
 	{
         "doctype":"Custom Field",
@@ -254,6 +263,15 @@ fixtures = [
 				"module", "=", "Roller"
 			]
 		]
+	},
+    {
+        "doctype":"Custom HTML Block",
+		"filters":[
+			[
+				"name", "=", "Roller"
+			]
+		]
 	}
 ]
+
 
