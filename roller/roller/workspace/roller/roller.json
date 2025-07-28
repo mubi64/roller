@@ -1,0 +1,104 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"bbbNv6wzf2\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Roller</span>\",\"col\":12}},{\"id\":\"KkT_bpCGul\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Roller Settings \u2699\ufe0f\",\"col\":3}},{\"id\":\"GtKBdWLNcR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Roller Webhook \ud83e\ude9d\",\"col\":3}},{\"id\":\"qYGbbjMFTM\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"T4uoeNFwMQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"VVl6MM_nVa\",\"type\":\"card\",\"data\":{\"card_name\":\"Transactions\",\"col\":4}}]",
+ "creation": "2025-07-28 07:42:39.762088",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "integration",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Roller",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settings",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Roller Settings",
+   "link_count": 0,
+   "link_to": "Roller Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Roller Webhook",
+   "link_count": 0,
+   "link_to": "Roller Webhook",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Transactions",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Roller Booking",
+   "link_count": 0,
+   "link_to": "Roller Booking",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Invoice",
+   "link_count": 0,
+   "link_to": "Sales Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-07-28 07:48:19.745606",
+ "modified_by": "Administrator",
+ "module": "Roller",
+ "name": "Roller",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 6.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Roller Settings \u2699\ufe0f",
+   "link_to": "Roller Settings",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Roller Webhook \ud83e\ude9d",
+   "link_to": "Roller Webhook",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Roller"
+}

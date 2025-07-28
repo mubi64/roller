@@ -46,6 +46,18 @@ frappe.ui.form.on('Roller Settings', {
             freeze: true,
             freeze_message: 'Fetching products from Roller API...'
         });
-    }
+    },
+    fetch_bookings: function (frm) {
+        frappe.call({
+            method: 'roller.api.booking.fetch_bookings_from_roller',
+            callback: function (r) {
+                if (r.message) {
+                    frappe.msgprint(__(r.message));
+                }
+            },
+            freeze: true,
+            freeze_message: 'Fetching bookings from Roller API...'
+        });
+    },
 });
 

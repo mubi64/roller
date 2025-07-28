@@ -21,15 +21,22 @@
   "default_customer",
   "default_sales_taxes_and_charges_template",
   "column_break_yydf",
+  "sales_invoice_naming_series",
+  "sales_return_naming_series",
   "data_tab",
   "customers_data_section",
-  "fetch_customers",
-  "column_break_arvs",
+  "customers_column",
   "customer_start_date",
   "customer_end_date",
-  "products_data_section",
+  "fetch_customers",
+  "column_break_arvs",
   "fetch_products",
-  "column_break_uycc"
+  "bookings_data_section",
+  "bookings_column",
+  "booking_start_date",
+  "booking_end_date",
+  "fetch_bookings",
+  "column_break_xiqz"
  ],
  "fields": [
   {
@@ -102,8 +109,7 @@
   },
   {
    "fieldname": "customers_data_section",
-   "fieldtype": "Section Break",
-   "label": "Customers Data"
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "customer_start_date",
@@ -117,21 +123,13 @@
   },
   {
    "fieldname": "column_break_arvs",
-   "fieldtype": "Column Break"
+   "fieldtype": "Column Break",
+   "label": "Products"
   },
   {
    "fieldname": "fetch_customers",
    "fieldtype": "Button",
    "label": "Fetch Customers"
-  },
-  {
-   "fieldname": "products_data_section",
-   "fieldtype": "Section Break",
-   "label": "Products Data"
-  },
-  {
-   "fieldname": "column_break_uycc",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "fetch_products",
@@ -174,13 +172,64 @@
    "label": "Default Company",
    "options": "Company",
    "reqd": 1
+  },
+  {
+   "default": "ACC-SINV-.YYYY.-",
+   "fieldname": "sales_invoice_naming_series",
+   "fieldtype": "Select",
+   "label": "Sales Invoice Naming Series",
+   "options": "ACC-SINV-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "default": "ACC-SINV-RET-.YYYY.-",
+   "fieldname": "sales_return_naming_series",
+   "fieldtype": "Select",
+   "label": "Sales Return Naming Series",
+   "options": "ACC-SINV-RET-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "bookings_data_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "fetch_bookings",
+   "fieldtype": "Button",
+   "label": "Fetch Bookings"
+  },
+  {
+   "fieldname": "column_break_xiqz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "booking_start_date",
+   "fieldtype": "Date",
+   "label": "Booking Start Date"
+  },
+  {
+   "default": "Today",
+   "fieldname": "booking_end_date",
+   "fieldtype": "Date",
+   "label": "Booking End Date"
+  },
+  {
+   "fieldname": "customers_column",
+   "fieldtype": "Column Break",
+   "label": "Customers"
+  },
+  {
+   "fieldname": "bookings_column",
+   "fieldtype": "Column Break",
+   "label": "Bookings"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-07-23 15:47:39.629274",
+ "modified": "2025-07-28 09:30:53.534985",
  "modified_by": "Administrator",
  "module": "Roller",
  "name": "Roller Settings",

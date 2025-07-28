@@ -4,7 +4,11 @@ import json
 from frappe.model.document import Document
 from frappe.utils import now
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import make_sales_return
+from roller.api.roller import get_new_access_token
 from datetime import datetime
+import requests
+from collections import defaultdict
+import uuid
 
 @frappe.whitelist(allow_guest=True)
 def handle_roller_webhook():
@@ -26,6 +30,7 @@ def handle_roller_webhook():
 def make_invoice_from_roller_booking(booking):
     try:
         frappe.set_user("Administrator")
+        settings = frappe.get_doc("Roller Settings")
         booking_doc = frappe.get_doc("Roller Booking", booking)
         if not booking_doc.response:
             frappe.log_error(frappe.get_traceback(), "No response data found in Roller Booking.")
@@ -78,7 +83,7 @@ def make_invoice_from_roller_booking(booking):
                         item.qty = -abs(item.qty)  # Ensure it's negative
                     # return_invoice.is_return = 1
                     # return_invoice.return_against = inv.name
-                    return_invoice.naming_series = "ACC-SINV-RET-.YYYY.-"
+                    return_invoice.naming_series = settings.sales_return_naming_series or "ACC-SINV-RET-.YYYY.-"
                     
                     print(str(return_invoice.return_against))
                     print(str(inv.posting_date), str(inv.posting_time))
@@ -97,12 +102,13 @@ def make_invoice_from_roller_booking(booking):
         if customer_id:
             customer = get_or_create_customer(customer_id, booking.get("name"))
         else:
-            default_customer = frappe.db.get_single_value("Roller Settings", "default_customer")
+            default_customer = settings.default_customer
             customer = frappe.get_doc("Customer", default_customer)
 
         if not existing_invoice:
             inv = frappe.new_doc("Sales Invoice")
-            inv.naming_series = "ACC-SINV-.MM.-.YY.-"
+            inv.naming_series = settings.sales_invoice_naming_series or "ACC-SINV-.YYYY.-"
+            inv.company = settings.default_company or frappe.get_single_value("Global Defaults", "default_company")
             inv.custom_roller_booking_reference = booking_reference
             inv.custom_roller_unique_id = uniqueId
         else:
@@ -117,7 +123,7 @@ def make_invoice_from_roller_booking(booking):
 
         if inv.customer != customer.name:
             inv.customer = customer.name
-            inv.title = customer.name
+            inv.title = customer.customer_name
             inv.contact_person = ""
             inv.contact_display = ""
 
@@ -161,10 +167,6 @@ def make_invoice_from_roller_booking(booking):
                 "price_list_rate": rate,
             })
 
-            # print("Cost:", item.get("cost"))
-            # print("Discount:", item.get("discount", 0))
-            # print("Rate:", item.get("cost") - item.get("discount", 0))
-
         # Set posting_date and due_date based on bookingDates
         inv.posting_date = earliest_date.date() if earliest_date else now()
         if inv.due_date != latest_date.date() if latest_date else now():
@@ -180,7 +182,7 @@ def make_invoice_from_roller_booking(booking):
             inv.apply_discount_on = "Grand Total"
             inv.discount_amount = float(booking.get("discount") or 0)
 
-        inv.taxes_and_charges = frappe.db.get_single_value("Roller Settings", "default_sales_taxes_and_charges_template")
+        inv.taxes_and_charges = settings.default_sales_taxes_and_charges_template
 
         inv.set_taxes()
 
@@ -199,7 +201,7 @@ def make_invoice_from_roller_booking(booking):
         if status == "Paid" or status == "PartiallyPaid":
             inv.is_pos = 1
             inv.set("payments", [{
-                "mode_of_payment": frappe.db.get_single_value("Roller Settings", "default_mode_of_payment") or "Cash",
+                "mode_of_payment": settings.default_mode_of_payment or "Cash",  # Or a specific one
                 "amount": float(float(booking.get("total") or 0) - float(booking.get("remainder") or 0))
             }])
             inv.set_paid_amount()
@@ -223,6 +225,157 @@ def make_invoice_from_roller_booking(booking):
         frappe.log_error(frappe.get_traceback(), "Roller Webhook Error")
         # return {"status": "error", "message": str(e)}
 
+@frappe.whitelist()
+def fetch_bookings_from_roller():
+    settings = frappe.get_single("Roller Settings")
+
+    start_date = settings.booking_start_date
+    end_date = settings.booking_end_date
+    
+    if not start_date or not end_date:
+        frappe.throw("Booking Start and End dates must be set in Roller Settings.")
+
+    base_url = settings.playground_url if settings.environment == "Playground" else settings.live_url
+    access_token = settings.access_token
+    token_url = f"{base_url}/token"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    page_number = 1
+    page_size = 500
+    retried = False  # Flag to track if we've retried
+    all_items = []
+
+    while True:
+        params = {
+            "pageNumber": page_number,
+            "pageSize": page_size,
+            "startDate": start_date,
+            "endDate": end_date
+        }
+        #/data/bookingitems
+        url = (
+            f"{base_url}/data/bookingitems?"
+            f"pageSize={page_size}&pageNumber={page_number}&"
+            f"startDate={start_date}&endDate={end_date}"
+        )
+        try:
+            response = requests.get(url, headers=headers, timeout=15)
+            if response.status_code == 401 and not retried:
+                print("Access token expired, trying to refresh...")
+                # Try getting new token and retry once
+                access_token = get_new_access_token(token_url, settings.client_id, settings.client_secret)
+                if not access_token:
+                    frappe.throw("Failed to refresh access token.")
+                # Save new token in settings
+                settings.access_token = access_token
+                frappe.db.set_single_value("Roller Settings", "access_token", access_token)
+                # settings.save(ignore_permissions=True)
+
+                retried = True
+                continue  # Retry the same request with new token
+
+            elif response.status_code == 401 and retried:
+                frappe.throw("Unauthorized (401) even after refreshing access token.")
+
+            # Handle any non-successful response
+            if not response.ok:
+                try:
+                    message = response.json().get("message", response.text)
+                except Exception:
+                    message = response.text
+                frappe.log_error(f"Roller API Error: {message}")
+                frappe.throw(_("Roller API Error: {0}").format(message))    
+
+
+            response.raise_for_status()
+
+            data = response.json()
+            print(data)
+            items = data.get("items", [])
+            all_items.extend(items)
+
+            if data.get("currentPage", 1) >= data.get("totalPages", 1):
+                break
+            page_number += 1
+        
+        except requests.exceptions.RequestException as e:
+            frappe.log_error(frappe.get_traceback(), "Roller Fetch Bookings Error")
+            frappe.throw(f"Failed to fetch bookings from Roller API: {e}")
+
+    # Group items by bookingReference
+    grouped = defaultdict(list)
+    for item in all_items:
+        grouped[item["bookingReference"]].append(item)
+
+    print(f"Total bookings fetched: {len(all_items)}")
+    for booking_reference, items in grouped.items():
+        if frappe.db.exists("Roller Booking", {"booking_reference": booking_reference}):
+            continue
+
+        first = items[0]
+        booking = {
+            "amountOwing": 0.0,
+            "bookingReference": booking_reference,
+            "channel": first.get("bookingLocation", "POS"),
+            "comments": first.get("bookingNotes", ""),
+            "createdDate": first["createdDate"],
+            "deviceId": 0,
+            "discount": float(first.get("discountAmount", 0.0)),
+            "fees": float(first.get("bookingFeeAmount", 0.0)),
+            "items": [],
+            "name": first.get("bookingName", ""),
+            "posNotes": first.get("bookingPosNotes", ""),
+            "remainder": 0.0,
+            "source": "POS",
+            "status": first.get("bookingStatus", "PendingPayment"),
+            "total": float(first.get("bookingTotal", 0.0)),
+            "uniqueId": first["bookingUniqueId"]
+        }
+
+        # Add customerId only if it exists
+        if first.get("bookingCustomerId"):
+            booking["customerId"] = int(first["bookingCustomerId"])
+
+        booking_json = {
+            "data": {
+                "booking": booking
+            },
+            "eventDate": first["createdDate"],
+            "eventType": 1,
+            "id": str(uuid.uuid4()),
+            "sendDate": first["createdDate"],
+            "type": 1
+        }
+
+
+        for item in items:
+            booking_json["data"]["booking"]["items"].append({
+                "bookingDate": item["bookingDate"],
+                "bookingEndDate": item["bookingEndDate"],
+                "bookingItemId": int(item["bookingItemId"]),
+                "cost": float(item.get("cost", 0.0)),
+                "createdDate": item["createdDate"],
+                "discount": float(item.get("discountAmount", 0.0)),
+                "groupSize": item.get("groupSize", 1),
+                "modifiers": item.get("modifiers", []),
+                "productId": int(item["productId"]),
+                "quantity": item.get("quantity", 1)
+            })
+
+        # Create and save the Roller Booking doc
+        doc = frappe.new_doc("Roller Booking")
+        doc.booking_reference = booking_reference
+        doc.response = frappe.as_json(booking_json)
+        doc.insert(ignore_permissions=True)
+        make_invoice_from_roller_booking(doc.name)
+        # frappe.db.commit()
+
+    return "Bookings sync completed for given dates."
+        
+
 # Helper: Create/Get Customer
 def get_or_create_customer(customer_id, name):
     customer = frappe.db.get_value("Customer", {"custom_roller_customer_id": customer_id})
@@ -231,6 +384,7 @@ def get_or_create_customer(customer_id, name):
     
     doc = frappe.new_doc("Customer")
     doc.customer_name = name or f"Roller Customer {customer_id}"
+    doc.customer_type = "Individual"
     doc.customer_group = "All Customer Groups"
     doc.territory = "All Territories"
     doc.custom_roller_customer_id = customer_id
