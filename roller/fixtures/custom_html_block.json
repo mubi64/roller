@@ -2,8 +2,8 @@
  {
   "docstatus": 0,
   "doctype": "Custom HTML Block",
-  "html": "<h3 style=\"display: flex; align-items: center; gap: 8px; margin: 0;\">\n  <img src=\"//cdn.rollerdigital.com/assets/icons/roller.png\" alt=\"Roller\" style=\"height: 20px;\">\n  Roller\n</h3>\n",
-  "modified": "2025-07-28 10:12:45.329598",
+  "html": "<h3 style=\"display: flex; align-items: center; gap: 8px; margin: 0;\">\n  <img src=\"//cdn.rollerdigital.com/assets/icons/roller.png\" alt=\"Roller\" style=\"height: 20px;\">\n  Roller Integration\n</h3>\n<p style=\"margin: 4px 0 0; color: #555;\">Seamless integration between Roller and SowaanERP.</p>\n<hr>\n",
+  "modified": "2025-07-29 07:12:28.269371",
   "name": "Roller",
   "private": 0,
   "roles": [],

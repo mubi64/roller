@@ -94,8 +94,7 @@
   {
    "fieldname": "access_token",
    "fieldtype": "Data",
-   "label": "Access Token",
-   "read_only": 1
+   "label": "Access Token"
   },
   {
    "fieldname": "integration_tab",
@@ -229,7 +228,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-07-28 10:18:22.589562",
+ "modified": "2025-07-29 08:35:13.428996",
  "modified_by": "Administrator",
  "module": "Roller",
  "name": "Roller Settings",

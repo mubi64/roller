@@ -15,7 +15,7 @@ def handle_roller_webhook():
     try:
         frappe.set_user("Administrator")
         data = json.loads(frappe.request.data)
-        booking_data = data.get("data", {}).get("booking", {})
+        booking_data = data.    get("data", {}).get("booking", {})
         
         booking = frappe.new_doc("Roller Booking")
         booking.booking_reference = booking_data.get("bookingReference")
@@ -33,11 +33,11 @@ def make_invoice_from_roller_booking(booking):
         settings = frappe.get_doc("Roller Settings")
         booking_doc = frappe.get_doc("Roller Booking", booking)
         if not booking_doc.response:
-            frappe.log_error(frappe.get_traceback(), "No response data found in Roller Booking.")
+            frappe.log_error("Roller Webhook Error", "No response data found in Roller Booking.")
             return
 
         if booking_doc.sales_invoice:
-            frappe.log_error(frappe.get_traceback(), "Sales Invoice already exists for this booking.")
+            frappe.log_error("Roller Webhook Error", "Sales Invoice already exists for this booking.")
             return
             
         # Check for duplicate booking_reference in future with invoice already created
@@ -52,7 +52,7 @@ def make_invoice_from_roller_booking(booking):
         )
 
         if future_duplicates:
-            frappe.log_error(frappe.get_traceback(), _("Invoice for this booking is already created by a future update: {0}".format(
+            frappe.log_error("Roller Webhook Error", _("Invoice for this booking is already created by a future update: {0}".format(
                 future_duplicates[0].name
             )))
             frappe.db.set_value("Roller Booking", booking_doc.name, "message", _("Invoice for this booking is already created by a future update: {0}".format(
@@ -114,7 +114,8 @@ def make_invoice_from_roller_booking(booking):
         else:
             inv = frappe.get_doc("Sales Invoice", {"custom_roller_unique_id": uniqueId})
             if inv.docstatus == 1:
-                frappe.log_error(frappe.get_traceback(), "Roller Webhook Error Cannot change submitted invoice")
+                frappe.log_error("Roller Webhook Error", "Cannot modify submitted invoice {0}".format(inv.name))
+                frappe.db.set_value("Roller Booking", booking_doc.name, "message", _("Cannot modify submitted invoice {0}.").format(inv.name))
                 return  # Do not modify submitted invoices
               
         # print(customer.name)
@@ -287,7 +288,7 @@ def fetch_bookings_from_roller():
                     message = response.json().get("message", response.text)
                 except Exception:
                     message = response.text
-                frappe.log_error(f"Roller API Error: {message}")
+                frappe.log_error("Roller Webhook Error", f"Roller API Error: {message}")
                 frappe.throw(_("Roller API Error: {0}").format(message))    
 
 

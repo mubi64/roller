@@ -1,0 +1,170 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"nxoEkFfpRx\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Roller\",\"col\":12}},{\"id\":\"kQ_u4rE1KA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\u2699\ufe0f Roller Settings\",\"col\":3}},{\"id\":\"k-VXgK8ZcW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83c\udf00 Roller Webhooks\",\"col\":3}},{\"id\":\"4eD3yl0ALe\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"NukqsfqFmW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udc64 Customers\",\"col\":3}},{\"id\":\"l5nZrQWjfj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udce6 Items\",\"col\":3}},{\"id\":\"AZiiRZGzzr\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83c\udf9f\ufe0f Roller Bookings\",\"col\":3}},{\"id\":\"abGRQyKQBl\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83e\uddfe Sales Invoices\",\"col\":3}},{\"id\":\"2J7ITeO9Gl\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fpdu1I4DCN\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"qvk3Y_6-o_\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"V_XtuHvCSN\",\"type\":\"card\",\"data\":{\"card_name\":\"Transactions\",\"col\":4}}]",
+ "creation": "2025-07-29 07:02:42.692245",
+ "custom_blocks": [
+  {
+   "custom_block_name": "Roller",
+   "label": "Roller"
+  }
+ ],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "integration",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Roller Integration",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settings",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Roller Settings",
+   "link_count": 0,
+   "link_to": "Roller Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Roller Webhook",
+   "link_count": 0,
+   "link_to": "Roller Webhook",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Transactions",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Roller Booking",
+   "link_count": 0,
+   "link_to": "Roller Booking",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Invoice",
+   "link_count": 0,
+   "link_to": "Sales Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Masters",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Customers",
+   "link_count": 0,
+   "link_to": "Customer",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Products",
+   "link_count": 0,
+   "link_to": "Item",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-07-29 14:57:35.637727",
+ "modified_by": "Administrator",
+ "module": "Roller",
+ "name": "Roller Integration",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 6.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "\u2699\ufe0f Roller Settings",
+   "link_to": "Roller Settings",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "\ud83c\udf00 Roller Webhooks",
+   "link_to": "Roller Webhook",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "\ud83d\udc64 Customers",
+   "link_to": "Customer",
+   "stats_filter": "[[\"Customer\",\"custom_roller_customer_id\",\"is\",\"set\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "\ud83d\udce6 Items",
+   "link_to": "Item",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "\ud83c\udf9f\ufe0f Roller Bookings",
+   "link_to": "Roller Booking",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "\ud83e\uddfe Sales Invoices",
+   "link_to": "Sales Invoice",
+   "stats_filter": "[[\"Sales Invoice\",\"custom_roller_unique_id\",\"is\",\"set\",false]]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Roller Integration"
+}
