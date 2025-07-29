@@ -59,7 +59,8 @@ bench --site <site_name> install-app roller
     }
   }
   ```
-      <img height="350" alt="image" src="https://github.com/user-attachments/assets/43e453b4-f4d9-4d49-b1f7-5b80d778b378" />
+  
+  <img height="350" alt="image" src="https://github.com/user-attachments/assets/43e453b4-f4d9-4d49-b1f7-5b80d778b378" />
   
   8. Save the payload and click the **Create in Roller** button. Once created, **Roller** will automatically send booking data to **SowaanERP** whenever a booking is **created**, **updated**, or **cancelled**.
 
