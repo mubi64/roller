@@ -12,6 +12,9 @@ cd <PATH_TO_YOUR_BENCH>
 bench get-app https://github.com/mubi64/roller
 bench --site <site_name> install-app roller
 ```
+
+<img height="400" alt="image" src="https://github.com/user-attachments/assets/2089c3cc-4d0a-4ff7-af5f-f1324c3fb3b3" />
+
 ## 🛠️ Integration Steps
 
   ### 🔐 Get Access Token from Roller API
@@ -41,28 +44,35 @@ bench --site <site_name> install-app roller
 
   7. Create a new **Roller Webhook** and use the following request payload:
 
-  ```json
-  {
-    "url": "<sowaanerp_base_url>/api/method/roller.api.booking.handle_roller_webhook",
-    "enabled": "true",
-    "webhooks": {
-      "booking": {
-        "events": [
-          "Created",
-          "Updated",
-          "Cancelled"
-        ]
+      ```json
+      {
+        "url": "<sowaanerp_base_url>/api/method/roller.api.booking.handle_roller_webhook",
+        "enabled": "true",
+        "webhooks": {
+          "booking": {
+            "events": [
+              "Created",
+              "Updated",
+              "Cancelled"
+            ]
+          }
+        },
+        "authentication": {
+          "apiKey": "token <api_key>:<api_secret>"
+        }
       }
-    },
-    "authentication": {
-      "apiKey": ""
-    }
-  }
-  ```
+      ```
+
+       - Replace `<sowaanerp_base_url>` with your actual SowaanERP instance URL.
+       - Replace `<api_key>` and `<api_secret>` with the credentials of a valid user in your system.
+
+      These credentials are required for authentication. If incorrect, Roller will not be able to create bookings in your SowaanERP instance.
+      
+      Ensure the user associated with the API credentials has sufficient permissions to create **Sales Invoices**, **Items**, and **Customers**.
   
-  <img height="350" alt="image" src="https://github.com/user-attachments/assets/43e453b4-f4d9-4d49-b1f7-5b80d778b378" />
+      <img height="350" alt="image" src="https://github.com/user-attachments/assets/43e453b4-f4d9-4d49-b1f7-5b80d778b378" />
   
-  8. Save the payload and click the **Create in Roller** button. Once created, **Roller** will automatically send booking data to **SowaanERP** whenever a booking is **created**, **updated**, or **cancelled**.
+  7. Save the payload and click the **Create in Roller** button. Once created, **Roller** will automatically send booking data to **SowaanERP** whenever a booking is **created**, **updated**, or **cancelled**.
 
       <img height="350" alt="image" src="https://github.com/user-attachments/assets/3d8969db-5744-47ca-a9cb-b622ad3589ed" />
 
