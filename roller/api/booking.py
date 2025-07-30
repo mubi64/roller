@@ -1,7 +1,6 @@
 import frappe
 from frappe import _
 import json
-from frappe.model.document import Document
 from frappe.utils import now
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import make_sales_return
 from roller.api.roller import get_new_access_token
@@ -10,13 +9,52 @@ import requests
 from collections import defaultdict
 import uuid
 
+
 @frappe.whitelist(allow_guest=True)
 def handle_roller_webhook():
     try:
-        frappe.set_user("Administrator")
-        data = json.loads(frappe.request.data)
-        booking_data = data.    get("data", {}).get("booking", {})
+        # Check if the request has data
+        if not frappe.request.data:
+            print("No data received in request")
+            frappe.local.response.http_status_code = 400
+            return {"error": "No data received in request"}
         
+
+        # -----Checking the authentication
+
+        auth_header = frappe.get_request_header("X-Roller-Apikey")
+        if not auth_header or ":" not in auth_header:
+            print("Missing or invalid API key")
+            frappe.local.response.http_status_code = 401
+            return {"error": "Missing or invalid API key"}
+
+        if auth_header.lower().startswith("token "):
+            auth_header = auth_header[6:].strip()
+
+        api_key, api_secret = auth_header.split(":", 1)
+
+        # Find user with API key
+        user = frappe.db.get_value("User", {"api_key": api_key})
+        if not user:
+            frappe.local.response.http_status_code = 401
+            return {"error": "Invalid API key"}
+
+        # Get hashed secret using get_doc + get_password
+        user_doc = frappe.get_doc("User", user)
+        stored_secret = user_doc.get_password("api_secret")
+
+        if not stored_secret or not (api_secret == stored_secret):
+            frappe.local.response.http_status_code = 401
+            return {"error": "Invalid API secret"}
+
+        # Set the authenticated user
+        frappe.set_user(user)
+
+        # -----Processing the webhook data
+        
+        data = json.loads(frappe.request.data)
+        booking_data = data.get("data", {}).get("booking", {})
+
         booking = frappe.new_doc("Roller Booking")
         booking.booking_reference = booking_data.get("bookingReference")
         booking.response = frappe.as_json(data)
@@ -29,7 +67,6 @@ def handle_roller_webhook():
 @frappe.whitelist()
 def make_invoice_from_roller_booking(booking):
     try:
-        frappe.set_user("Administrator")
         settings = frappe.get_doc("Roller Settings")
         booking_doc = frappe.get_doc("Roller Booking", booking)
         if not booking_doc.response:

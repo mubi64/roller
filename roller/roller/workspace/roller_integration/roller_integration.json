@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"nxoEkFfpRx\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Roller\",\"col\":12}},{\"id\":\"kQ_u4rE1KA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\u2699\ufe0f Roller Settings\",\"col\":3}},{\"id\":\"k-VXgK8ZcW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83c\udf00 Roller Webhooks\",\"col\":3}},{\"id\":\"4eD3yl0ALe\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"NukqsfqFmW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udc64 Customers\",\"col\":3}},{\"id\":\"l5nZrQWjfj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udce6 Items\",\"col\":3}},{\"id\":\"AZiiRZGzzr\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83c\udf9f\ufe0f Roller Bookings\",\"col\":3}},{\"id\":\"abGRQyKQBl\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83e\uddfe Sales Invoices\",\"col\":3}},{\"id\":\"2J7ITeO9Gl\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fpdu1I4DCN\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"qvk3Y_6-o_\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"V_XtuHvCSN\",\"type\":\"card\",\"data\":{\"card_name\":\"Transactions\",\"col\":4}}]",
+ "content": "[{\"id\":\"nxoEkFfpRx\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Roller\",\"col\":12}},{\"id\":\"kQ_u4rE1KA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\u2699\ufe0f Roller Settings\",\"col\":3}},{\"id\":\"k-VXgK8ZcW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83c\udf00 Roller Webhooks\",\"col\":3}},{\"id\":\"4eD3yl0ALe\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"NukqsfqFmW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udc64 Customers\",\"col\":3}},{\"id\":\"l5nZrQWjfj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udce6 Items\",\"col\":3}},{\"id\":\"AZiiRZGzzr\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udcdd Roller Bookings\",\"col\":3}},{\"id\":\"abGRQyKQBl\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83e\uddfe Sales Invoices\",\"col\":3}},{\"id\":\"2J7ITeO9Gl\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fpdu1I4DCN\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"qvk3Y_6-o_\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"V_XtuHvCSN\",\"type\":\"card\",\"data\":{\"card_name\":\"Transactions\",\"col\":4}}]",
  "creation": "2025-07-29 07:02:42.692245",
  "custom_blocks": [
   {
@@ -106,7 +106,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-07-29 14:57:35.637727",
+ "modified": "2025-07-30 07:41:38.352760",
  "modified_by": "Administrator",
  "module": "Roller",
  "name": "Roller Integration",
@@ -136,6 +136,14 @@
   {
    "color": "Green",
    "doc_view": "List",
+   "label": "\ud83d\udcdd Roller Bookings",
+   "link_to": "Roller Booking",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
    "label": "\ud83d\udc64 Customers",
    "link_to": "Customer",
    "stats_filter": "[[\"Customer\",\"custom_roller_customer_id\",\"is\",\"set\",false]]",
@@ -146,14 +154,6 @@
    "doc_view": "List",
    "label": "\ud83d\udce6 Items",
    "link_to": "Item",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Green",
-   "doc_view": "List",
-   "label": "\ud83c\udf9f\ufe0f Roller Bookings",
-   "link_to": "Roller Booking",
    "stats_filter": "[]",
    "type": "DocType"
   },
