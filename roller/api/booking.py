@@ -12,6 +12,7 @@ import uuid
 
 @frappe.whitelist(allow_guest=True)
 def handle_roller_webhook():
+    ip_address = frappe.local.request_ip
     headers = dict(frappe.request.headers)
     body_raw = frappe.request.data
     try:
@@ -21,7 +22,7 @@ def handle_roller_webhook():
     
     headers_str = json.dumps(headers, indent=4)
     body_str = json.dumps(body, indent=4) if isinstance(body, dict) else str(body)
-    log_message = f"Roller Webhook Received\n\nHeaders:\n{headers_str}\n\nBody:\n{body_str}"
+    log_message = f"Roller Webhook Received\n\nIP Address:\n{ip_address}\n\nHeaders:\n{headers_str}\n\nBody:\n{body_str}"
     frappe.log_error(log_message, "Roller Webhook Log")
 
     
