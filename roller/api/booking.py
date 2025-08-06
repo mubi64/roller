@@ -12,6 +12,19 @@ import uuid
 
 @frappe.whitelist(allow_guest=True)
 def handle_roller_webhook():
+    headers = dict(frappe.request.headers)
+    body_raw = frappe.request.data
+    try:
+        body = json.loads(body_raw)
+    except Exception:
+        body = body_raw.decode("utf-8") if isinstance(body_raw, bytes) else str(body_raw)
+    
+    headers_str = json.dumps(headers, indent=4)
+    body_str = json.dumps(body, indent=4) if isinstance(body, dict) else str(body)
+    log_message = f"Roller Webhook Received\n\nHeaders:\n{headers_str}\n\nBody:\n{body_str}"
+    frappe.log_error(log_message, "Roller Webhook Log")
+
+    
     try:
         # Check if the request has data
         if not frappe.request.data:
