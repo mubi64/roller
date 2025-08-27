@@ -19,6 +19,7 @@
   "default_company",
   "default_mode_of_payment",
   "default_customer",
+  "default_address",
   "default_sales_taxes_and_charges_template",
   "column_break_yydf",
   "sales_invoice_naming_series",
@@ -223,13 +224,20 @@
    "fieldname": "bookings_column",
    "fieldtype": "Column Break",
    "label": "Bookings"
+  },
+  {
+   "fieldname": "default_address",
+   "fieldtype": "Link",
+   "label": "Default Address",
+   "options": "Address",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-07-29 15:27:53.879309",
+ "modified": "2025-08-27 12:59:41.037838",
  "modified_by": "Administrator",
  "module": "Roller",
  "name": "Roller Settings",

@@ -156,6 +156,26 @@ def make_invoice_from_roller_booking(booking):
             default_customer = settings.default_customer
             customer = frappe.get_doc("Customer", default_customer)
 
+        # Customer Address
+        existing_address = frappe.db.exists(
+            "Dynamic Link",
+            {
+                "link_doctype": "Customer",
+                "link_name": customer.name,
+                "parenttype": "Address"
+            }
+        )
+
+        if not existing_address:
+            # Add link in default address
+            address_doc = frappe.get_doc("Address", settings.default_address)
+            address_doc.append("links", {
+                "link_doctype": "Customer",
+                "link_name": customer.name
+            })
+            address_doc.save(ignore_permissions=True)
+
+        
         if not existing_invoice:
             inv = frappe.new_doc("Sales Invoice")
             inv.naming_series = settings.sales_invoice_naming_series or "ACC-SINV-.YYYY.-"
