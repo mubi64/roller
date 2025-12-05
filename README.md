@@ -1,7 +1,7 @@
 ## Roller
 <img height="50" alt="image" src="https://github.com/user-attachments/assets/176261d6-ca0b-4745-8efe-ba67b4fccc96" />
 
-Seamless integration between Roller and SowaanERP
+Seamless integration between Roller and SowaanERP (ERPNext)
 
 ### Installation
 
@@ -9,7 +9,7 @@ You can install this app using the [bench](https://github.com/frappe/bench) CLI:
 
 ```bash
 cd <PATH_TO_YOUR_BENCH>
-bench get-app https://github.com/mubi64/roller
+bench get-app https://github.com/sowaan/roller
 bench --site <site_name> install-app roller
 ```
 
