@@ -96,7 +96,7 @@ def fetch_and_save_customers(start_date, end_date, settings):
             frappe.logger().info("Processing {} customers on page {}".format(len(customers), page_number))
             
             for c in customers:
-                save_customer_to_erpnext(c)
+                save_customer_to_erpnext(c, settings.default_address)
 
             if data.get("currentPage", 1) >= data.get("totalPages", 1):
                 break
@@ -109,7 +109,7 @@ def fetch_and_save_customers(start_date, end_date, settings):
 
 
 
-def save_customer_to_erpnext(c):
+def save_customer_to_erpnext(c, default_address):
     roller_customer_id = c.get("customerId")
     if not roller_customer_id:
         return
@@ -129,6 +129,7 @@ def save_customer_to_erpnext(c):
         customer.customer_type = "Individual"
         customer.customer_group = "All Customer Groups"
         customer.email_id = email
+		customer.customer_primary_address = default_address
         customer.custom_roller_customer_id = roller_customer_id
 
     customer.flags.ignore_permissions = True
