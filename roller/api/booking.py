@@ -151,7 +151,7 @@ def make_invoice_from_roller_booking(booking):
 
         # Create or Update
         if customer_id:
-            customer = get_or_create_customer(customer_id, booking.get("name"))
+            customer = get_or_create_customer(customer_id, booking.get("name"), settings.default_address)
         else:
             default_customer = settings.default_customer
             customer = frappe.get_doc("Customer", default_customer)
@@ -452,7 +452,7 @@ def fetch_bookings_from_roller():
         
 
 # Helper: Create/Get Customer
-def get_or_create_customer(customer_id, name):
+def get_or_create_customer(customer_id, name, default_address):
     customer = frappe.db.get_value("Customer", {"custom_roller_customer_id": customer_id})
     if customer:
         return frappe.get_doc("Customer", customer)
@@ -462,6 +462,7 @@ def get_or_create_customer(customer_id, name):
     doc.customer_type = "Individual"
     doc.customer_group = "All Customer Groups"
     doc.territory = "All Territories"
+	doc.customer_primary_address = default_address
     doc.custom_roller_customer_id = customer_id
     doc.save(ignore_permissions=True)
     return doc
