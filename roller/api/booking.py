@@ -251,7 +251,7 @@ def make_invoice_from_roller_booking(booking):
             inv.remarks = booking.get("comments")
 
         if inv.discount_amount != float(booking.get("discount") or 0):
-            inv.apply_discount_on = "Grand Total"
+            inv.apply_discount_on = "Net Total"
             inv.discount_amount = float(booking.get("discount") or 0)
 
         inv.taxes_and_charges = settings.default_sales_taxes_and_charges_template
