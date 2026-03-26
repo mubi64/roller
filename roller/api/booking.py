@@ -346,7 +346,7 @@ def fetch_bookings_from_roller():
                 settings.access_token = access_token
                 frappe.db.set_single_value("Roller Settings", "access_token", access_token)
                 # settings.save(ignore_permissions=True)
-
+                headers["Authorization"] = f"Bearer {access_token}"
                 retried = True
                 continue  # Retry the same request with new token
 
@@ -355,13 +355,28 @@ def fetch_bookings_from_roller():
 
             # Handle any non-successful response
             if not response.ok:
+                message = ""
                 try:
-                    message = response.json().get("message", response.text)
+                    error_json = response.json()
+                    message = (
+                        error_json.get("message")
+                        or error_json.get("error")
+                        or error_json.get("title")
+                        or str(error_json)
+                    )
                 except Exception:
                     message = response.text
-                frappe.log_error("Roller Webhook Error", f"Roller API Error: {response.status_code} - {response.text}")
-                frappe.throw(_("Roller API Error: {0}").format(message))    
-
+                
+                frappe.log_error(
+                        title="Roller API Error-1",
+                        message=f"""
+                        Mesage: {message}
+                        Status: {response.status_code}
+                        URL: {url}
+                        Response Text: {response.text}
+                        """
+                    )    
+                frappe.throw(_("Roller API Error-2: {0}").format(message))  
 
             response.raise_for_status()
 
