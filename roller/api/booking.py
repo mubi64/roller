@@ -359,7 +359,7 @@ def fetch_bookings_from_roller():
                     message = response.json().get("message", response.text)
                 except Exception:
                     message = response.text
-                frappe.log_error("Roller Webhook Error", f"Roller API Error: {message}")
+                frappe.log_error("Roller Webhook Error", f"Roller API Error: {response.status_code} - {response.text}")
                 frappe.throw(_("Roller API Error: {0}").format(message))    
 
 
