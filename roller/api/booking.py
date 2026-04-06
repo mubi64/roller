@@ -250,15 +250,31 @@ def make_invoice_from_roller_booking(booking):
         if inv.remarks != booking.get("comments"):
             inv.remarks = booking.get("comments")
 
-        if inv.discount_amount != float(booking.get("discount") or 0):
-            inv.apply_discount_on = "Net Total"
-            inv.discount_amount = float(booking.get("discount") or 0)
-
         inv.taxes_and_charges = settings.default_sales_taxes_and_charges_template
+        roller_discount_amount = float(booking.get("discount") or 0)
+
+        # Reset discount first so ERPNext calculates the undiscounted totals.
+        # Roller sends booking-level discount based on the final total, so when we
+        # apply it on Net Total we convert it to the equivalent pre-tax amount.
+        inv.apply_discount_on = ""
+        inv.discount_amount = 0
 
         inv.set_taxes()
 
         inv.set_missing_values()
+
+        if roller_discount_amount:
+            pre_discount_net_total = float(inv.net_total or 0)
+            pre_discount_grand_total = float(inv.grand_total or 0)
+
+            effective_discount_amount = roller_discount_amount
+            if pre_discount_grand_total > 0:
+                effective_discount_amount = (
+                    roller_discount_amount * pre_discount_net_total / pre_discount_grand_total
+                )
+
+            inv.apply_discount_on = "Net Total"
+            inv.discount_amount = min(effective_discount_amount, pre_discount_net_total)
 
         # Mark as paid
         # if status == "Paid":
