@@ -13,7 +13,15 @@ def fetch_customers_from_roller():
     today = frappe.utils.today()
 
     if not start_date or not end_date:
-        frappe.throw("Start and End dates must be set in Roller Settings.")
+        error_msg = (
+            "Customer Start and End dates must be set in Roller Settings.\n\n"
+            "To fix this:\n"
+            "1. Go to Roller Settings\n"
+            "2. Set 'Customer Start Date' and 'Customer End Date' under the Customers section\n"
+            "3. Or run: bench execute roller.fix_roller_settings.initialize_date_fields"
+        )
+        frappe.log_error(error_msg, "Roller Customer Configuration Error")
+        frappe.throw(error_msg)
 
     # Loop until start_date reaches today
     while True:

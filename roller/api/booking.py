@@ -4,7 +4,7 @@ import json
 from frappe.utils import now
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import make_sales_return
 from roller.api.roller import get_new_access_token
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 from collections import defaultdict
 import uuid
@@ -321,7 +321,15 @@ def fetch_bookings_from_roller():
     end_date = settings.booking_end_date
     
     if not start_date or not end_date:
-        frappe.throw("Booking Start and End dates must be set in Roller Settings.")
+        error_msg = (
+            "Booking Start and End dates must be set in Roller Settings.\n\n"
+            "To fix this:\n"
+            "1. Go to Roller Settings\n"
+            "2. Set 'Booking Start Date' and 'Booking End Date' under the Bookings section\n"
+            "3. Or run: bench execute roller.fix_roller_settings.initialize_date_fields"
+        )
+        frappe.log_error(error_msg, "Roller Booking Configuration Error")
+        frappe.throw(error_msg)
 
     base_url = settings.playground_url if settings.environment == "Playground" else settings.live_url
     access_token = settings.access_token
@@ -331,83 +339,83 @@ def fetch_bookings_from_roller():
         "Content-Type": "application/json"
     }
 
-    page_number = 1
     page_size = 500
-    retried = False  # Flag to track if we've retried
     all_items = []
 
+    # Roller API only allows a 1-day window per request, so iterate day by day.
+    current = datetime.strptime(str(start_date), "%Y-%m-%d").date()
+    end = datetime.strptime(str(end_date), "%Y-%m-%d").date()
+
     frappe.logger().info("Started booking sync for dates: {} to {}".format(start_date, end_date))
-    while True:
-        params = {
-            "pageNumber": page_number,
-            "pageSize": page_size,
-            "startDate": start_date,
-            "endDate": end_date
-        }
-        #/data/bookingitems
-        url = (
-            f"{base_url}/data/bookingitems?"
-            f"pageSize={page_size}&pageNumber={page_number}&"
-            f"startDate={start_date}&endDate={end_date}"
-        )
-        try:
-            response = requests.get(url, headers=headers, timeout=15)
-            if response.status_code == 401 and not retried:
-                print("Access token expired, trying to refresh...")
-                # Try getting new token and retry once
-                access_token = get_new_access_token(token_url, settings.client_id, settings.client_secret)
-                if not access_token:
-                    frappe.throw("Failed to refresh access token.")
-                # Save new token in settings
-                settings.access_token = access_token
-                frappe.db.set_single_value("Roller Settings", "access_token", access_token)
-                # settings.save(ignore_permissions=True)
-                headers["Authorization"] = f"Bearer {access_token}"
-                retried = True
-                continue  # Retry the same request with new token
 
-            elif response.status_code == 401 and retried:
-                frappe.throw("Unauthorized (401) even after refreshing access token.")
+    while current <= end:
+        day_start = current.strftime("%Y-%m-%d")
+        day_end = (current + timedelta(days=1)).strftime("%Y-%m-%d")
+        page_number = 1
+        retried = False
 
-            # Handle any non-successful response
-            if not response.ok:
-                message = ""
-                try:
-                    error_json = response.json()
-                    message = (
-                        error_json.get("message")
-                        or error_json.get("error")
-                        or error_json.get("title")
-                        or str(error_json)
-                    )
-                except Exception:
-                    message = response.text
-                
-                frappe.log_error(
+        while True:
+            url = (
+                f"{base_url}/data/bookingitems?"
+                f"pageSize={page_size}&pageNumber={page_number}&"
+                f"startDate={day_start}&endDate={day_end}"
+            )
+            try:
+                response = requests.get(url, headers=headers, timeout=15)
+                if response.status_code == 401 and not retried:
+                    print("Access token expired, trying to refresh...")
+                    access_token = get_new_access_token(token_url, settings.client_id, settings.client_secret)
+                    if not access_token:
+                        frappe.throw("Failed to refresh access token.")
+                    settings.access_token = access_token
+                    frappe.db.set_single_value("Roller Settings", "access_token", access_token)
+                    headers["Authorization"] = f"Bearer {access_token}"
+                    retried = True
+                    continue
+
+                elif response.status_code == 401 and retried:
+                    frappe.throw("Unauthorized (401) even after refreshing access token.")
+
+                if not response.ok:
+                    message = ""
+                    try:
+                        error_json = response.json()
+                        message = (
+                            error_json.get("message")
+                            or error_json.get("error")
+                            or error_json.get("title")
+                            or str(error_json)
+                        )
+                    except Exception:
+                        message = response.text
+
+                    frappe.log_error(
                         title="Roller API Error-1",
                         message=f"""
-                        Mesage: {message}
+                        Message: {message}
                         Status: {response.status_code}
                         URL: {url}
                         Response Text: {response.text}
                         """
-                    )    
-                frappe.throw(_("Roller API Error-2: {0}").format(message))  
+                    )
+                    frappe.throw(_("Roller API Error-2: {0}").format(message))
 
-            response.raise_for_status()
+                response.raise_for_status()
 
-            data = response.json()
-            print(data)
-            items = data.get("items", [])
-            all_items.extend(items)
+                data = response.json()
+                print(data)
+                items = data.get("items", [])
+                all_items.extend(items)
 
-            if data.get("currentPage", 1) >= data.get("totalPages", 1):
-                break
-            page_number += 1
-        
-        except requests.exceptions.RequestException as e:
-            frappe.log_error(frappe.get_traceback(), "Roller Fetch Bookings Error")
-            frappe.throw(f"Failed to fetch bookings from Roller API: {e}")
+                if data.get("currentPage", 1) >= data.get("totalPages", 1):
+                    break
+                page_number += 1
+
+            except requests.exceptions.RequestException as e:
+                frappe.log_error(frappe.get_traceback(), "Roller Fetch Bookings Error")
+                frappe.throw(f"Failed to fetch bookings from Roller API: {e}")
+
+        current += timedelta(days=1)
 
     # Group items by bookingReference
     grouped = defaultdict(list)
@@ -475,8 +483,9 @@ def fetch_bookings_from_roller():
         doc.booking_reference = booking_reference
         doc.response = frappe.as_json(booking_json)
         doc.insert(ignore_permissions=True)
+        frappe.db.commit()
         make_invoice_from_roller_booking(doc.name)
-        # frappe.db.commit()
+        frappe.db.commit()
 
     frappe.logger().info("Bookings sync completed from {} to {}.".format(start_date, end_date))
     return "Bookings sync completed for given dates."
