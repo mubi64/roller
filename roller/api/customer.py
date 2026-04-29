@@ -14,46 +14,48 @@ def fetch_customers_from_roller():
 
     if not start_date or not end_date:
         error_msg = (
-            "Customer Start and End dates must be set in Roller Settings.\n\n"
-            "To fix this:\n"
-            "1. Go to Roller Settings\n"
-            "2. Set 'Customer Start Date' and 'Customer End Date' under the Customers section\n"
+            "Customer Start and End dates must be set in Roller Settings.<br><br>"
+            "To fix this:<br>"
+            "1. Go to Roller Settings<br>"
+            "2. Set 'Customer Start Date' and 'Customer End Date' under the Customers section<br>"
             "3. Or run: bench execute roller.fix_roller_settings.initialize_date_fields"
         )
         frappe.log_error(error_msg, "Roller Customer Configuration Error")
         frappe.throw(error_msg)
 
-    # Loop until start_date reaches today
-    while True:
-        # Call the API for the current date window
-        fetch_and_save_customers(start_date, end_date, settings)
+    # Pre-load all existing roller customer IDs in one query to avoid per-customer DB lookups.
+    existing_customers = {
+        str(r.custom_roller_customer_id): r.name
+        for r in frappe.get_all(
+            "Customer",
+            filters=[["custom_roller_customer_id", "!=", ""]],
+            fields=["name", "custom_roller_customer_id"]
+        )
+    }
 
-        # If today has been reached, break the loop (don't update date fields)
-        if start_date == today:
-            break
+    # Roller API only allows a 1-day window per request, so iterate day by day.
+    current = datetime.strptime(str(start_date), "%Y-%m-%d").date()
+    end = datetime.strptime(str(end_date), "%Y-%m-%d").date()
 
-        # Move the date window forward by 1 day
-        start_date = str(datetime.strptime(start_date, "%Y-%m-%d") + timedelta(days=1))[:10]
-        end_date = str(datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1))[:10]
+    frappe.logger().info("Started customer sync for dates: {} to {}".format(start_date, end_date))
+    while current <= end:
+        day_start = current.strftime("%Y-%m-%d")
+        day_end = (current + timedelta(days=1)).strftime("%Y-%m-%d")
+        fetch_and_save_customers(day_start, day_end, settings, existing_customers)
+        current += timedelta(days=1)
 
-        # Update the fields in Roller Settings
-        settings.customer_start_date = start_date
-        settings.customer_end_date = end_date
-        settings.save(ignore_permissions=True)
-
-    frappe.logger().info("Customer sync completed until {}.".format(today))
-    return "Customer sync completed until today."
+    frappe.logger().info("Customer sync completed until {}.".format(end_date))
+    return "Customer sync completed for given dates."
 
 
-def fetch_and_save_customers(start_date, end_date, settings):
+def fetch_and_save_customers(start_date, end_date, settings, existing_customers):
     base_url = settings.playground_url if settings.environment == "Playground" else settings.live_url
     access_token = settings.access_token
     token_url = f"{base_url}/token"
 
     page_number = 1
     page_size = 500
-    retried = False  # Flag to track if we've retried
-    frappe.logger().info("Started customer sync for dates: {} to {}".format(start_date, end_date))
+    retried = False
     while True:
         url = (
             f"{base_url}/data/customers?"
@@ -70,31 +72,24 @@ def fetch_and_save_customers(start_date, end_date, settings):
             response = requests.get(url, headers=headers, timeout=15)
 
             if response.status_code == 401 and not retried:
-                print("Access token expired, trying to refresh...")
-                # Try getting new token and retry once
                 access_token = get_new_access_token(token_url, settings.client_id, settings.client_secret)
                 if not access_token:
                     frappe.throw("Failed to refresh access token.")
-                # Save new token in settings
                 settings.access_token = access_token
                 frappe.db.set_single_value("Roller Settings", "access_token", access_token)
-                # settings.save(ignore_permissions=True)
-
                 retried = True
-                continue  # Retry the same request with new token
+                continue
 
             elif response.status_code == 401 and retried:
                 frappe.throw("Unauthorized (401) even after refreshing access token.")
 
-            # Handle any non-successful response
             if not response.ok:
                 try:
                     message = response.json().get("message", response.text)
                 except Exception:
                     message = response.text
                 frappe.log_error(f"Roller API Error: {message}")
-                frappe.throw(_("Roller API Error: {0}").format(message))    
-
+                frappe.throw(_("Roller API Error: {0}").format(message))
 
             response.raise_for_status()
 
@@ -102,9 +97,13 @@ def fetch_and_save_customers(start_date, end_date, settings):
             customers = data.get("items", [])
 
             frappe.logger().info("Processing {} customers on page {}".format(len(customers), page_number))
-            
-            for c in customers:
-                save_customer_to_erpnext(c)
+
+            for i, c in enumerate(customers):
+                save_customer_to_erpnext(c, existing_customers)
+                if i % 50 == 49:
+                    frappe.db.commit()
+
+            frappe.db.commit()
 
             if data.get("currentPage", 1) >= data.get("totalPages", 1):
                 break
@@ -116,28 +115,25 @@ def fetch_and_save_customers(start_date, end_date, settings):
             frappe.throw(f"Failed to fetch customers from Roller API: {e}")
 
 
-
-def save_customer_to_erpnext(c):
-    roller_customer_id = c.get("customerId")
+def save_customer_to_erpnext(c, existing_customers):
+    roller_customer_id = str(c.get("customerId") or "")
     if not roller_customer_id:
         return
 
     customer_name = f"{c.get('firstName', '')} {c.get('lastName', '')}".strip()
     email = c.get("email")
 
-    existing = frappe.get_all("Customer", filters={"custom_roller_customer_id": roller_customer_id}, limit=1)
+    if roller_customer_id in existing_customers:
+        # Skip update — customer already synced
+        return
 
-    if existing:
-        customer = frappe.get_doc("Customer", existing[0].name)
-        customer.customer_name = customer_name
-        customer.email_id = email
-    else:
-        customer = frappe.new_doc("Customer")
-        customer.customer_name = customer_name or f"Roller Customer {roller_customer_id}"
-        customer.customer_type = "Individual"
-        customer.customer_group = "All Customer Groups"
-        customer.email_id = email
-        customer.custom_roller_customer_id = roller_customer_id
-
+    customer = frappe.new_doc("Customer")
+    customer.customer_name = customer_name or f"Roller Customer {roller_customer_id}"
+    customer.customer_type = "Individual"
+    customer.customer_group = "All Customer Groups"
+    customer.email_id = email
+    customer.custom_roller_customer_id = roller_customer_id
     customer.flags.ignore_permissions = True
     customer.save()
+
+    existing_customers[roller_customer_id] = customer.name

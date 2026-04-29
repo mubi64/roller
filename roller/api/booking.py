@@ -322,10 +322,10 @@ def fetch_bookings_from_roller():
     
     if not start_date or not end_date:
         error_msg = (
-            "Booking Start and End dates must be set in Roller Settings.\n\n"
-            "To fix this:\n"
-            "1. Go to Roller Settings\n"
-            "2. Set 'Booking Start Date' and 'Booking End Date' under the Bookings section\n"
+            "Booking Start and End dates must be set in Roller Settings.<br><br>"
+            "To fix this:<br>"
+            "1. Go to Roller Settings<br>"
+            "2. Set 'Booking Start Date' and 'Booking End Date' under the Bookings section<br>"
             "3. Or run: bench execute roller.fix_roller_settings.initialize_date_fields"
         )
         frappe.log_error(error_msg, "Roller Booking Configuration Error")
