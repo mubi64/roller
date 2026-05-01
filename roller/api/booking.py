@@ -296,9 +296,9 @@ def make_invoice_from_roller_booking(booking):
 
         
         if status == "Paid":
-            inv.set_posting_time = 0
-            inv.posting_date = now()
-            inv.due_date = now()
+            # inv.set_posting_time = 0
+            # inv.posting_date = now()
+            # inv.due_date = now()
             inv.set("payment_schedule", [])
             inv.save(ignore_permissions=True)
             inv.submit()
@@ -317,19 +317,9 @@ def make_invoice_from_roller_booking(booking):
 def fetch_bookings_from_roller():
     settings = frappe.get_single("Roller Settings")
 
-    start_date = settings.booking_start_date
-    end_date = settings.booking_end_date
-    
-    if not start_date or not end_date:
-        error_msg = (
-            "Booking Start and End dates must be set in Roller Settings.<br><br>"
-            "To fix this:<br>"
-            "1. Go to Roller Settings<br>"
-            "2. Set 'Booking Start Date' and 'Booking End Date' under the Bookings section<br>"
-            "3. Or run: bench execute roller.fix_roller_settings.initialize_date_fields"
-        )
-        frappe.log_error(error_msg, "Roller Booking Configuration Error")
-        frappe.throw(error_msg)
+    today = frappe.utils.today()
+    start_date = settings.booking_start_date or today
+    end_date = settings.booking_end_date or today
 
     base_url = settings.playground_url if settings.environment == "Playground" else settings.live_url
     access_token = settings.access_token

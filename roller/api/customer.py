@@ -8,20 +8,9 @@ from roller.api.roller import get_new_access_token
 def fetch_customers_from_roller():
     settings = frappe.get_single("Roller Settings")
 
-    start_date = settings.customer_start_date
-    end_date = settings.customer_end_date
     today = frappe.utils.today()
-
-    if not start_date or not end_date:
-        error_msg = (
-            "Customer Start and End dates must be set in Roller Settings.<br><br>"
-            "To fix this:<br>"
-            "1. Go to Roller Settings<br>"
-            "2. Set 'Customer Start Date' and 'Customer End Date' under the Customers section<br>"
-            "3. Or run: bench execute roller.fix_roller_settings.initialize_date_fields"
-        )
-        frappe.log_error(error_msg, "Roller Customer Configuration Error")
-        frappe.throw(error_msg)
+    start_date = settings.customer_start_date or today
+    end_date = settings.customer_end_date or today
 
     # Pre-load all existing roller customer IDs in one query to avoid per-customer DB lookups.
     existing_customers = {
