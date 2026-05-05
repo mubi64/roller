@@ -314,12 +314,12 @@ def make_invoice_from_roller_booking(booking):
         # return {"status": "error", "message": str(e)}
 
 @frappe.whitelist()
-def fetch_bookings_from_roller():
+def fetch_bookings_from_roller(start_date=None, end_date=None):
     settings = frappe.get_single("Roller Settings")
 
     today = frappe.utils.today()
-    start_date = settings.booking_start_date or today
-    end_date = settings.booking_end_date or today
+    start_date = start_date or settings.booking_start_date or today
+    end_date = end_date or settings.booking_end_date or today
 
     base_url = settings.playground_url if settings.environment == "Playground" else settings.live_url
     access_token = settings.access_token
