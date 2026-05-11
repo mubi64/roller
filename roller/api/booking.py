@@ -167,13 +167,23 @@ def make_invoice_from_roller_booking(booking):
         )
 
         if not existing_address:
-            # Add link in default address
-            address_doc = frappe.get_doc("Address", settings.default_address)
-            address_doc.append("links", {
-                "link_doctype": "Customer",
-                "link_name": customer.name
-            })
-            address_doc.save(ignore_permissions=True)
+            for attempt in range(3):
+                try:
+                    address_doc = frappe.get_doc("Address", settings.default_address)
+                    already_linked = any(
+                        l.link_doctype == "Customer" and l.link_name == customer.name
+                        for l in address_doc.get("links", [])
+                    )
+                    if not already_linked:
+                        address_doc.append("links", {
+                            "link_doctype": "Customer",
+                            "link_name": customer.name
+                        })
+                        address_doc.save(ignore_permissions=True)
+                    break
+                except frappe.exceptions.TimestampMismatchError:
+                    if attempt == 2:
+                        raise
 
         
         if not existing_invoice:
@@ -240,7 +250,9 @@ def make_invoice_from_roller_booking(booking):
             })
 
         # Set posting_date and due_date based on bookingDates
-        inv.posting_date = earliest_date.date() if earliest_date else now()
+        # Cap posting_date at today — ZATCA rejects future issue dates (BR-KSA-04)
+        today_date = frappe.utils.getdate()
+        inv.posting_date = min(earliest_date.date(), today_date) if earliest_date else today_date
         if inv.due_date != latest_date.date() if latest_date else now():
             # Only set due_date if it is different from posting_date
             inv.due_date = latest_date.date() if latest_date else now()
