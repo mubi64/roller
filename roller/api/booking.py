@@ -249,10 +249,8 @@ def make_invoice_from_roller_booking(booking):
                 "price_list_rate": rate,
             })
 
-        # Set posting_date and due_date based on bookingDates
-        # Cap posting_date at today — ZATCA rejects future issue dates (BR-KSA-04)
         today_date = frappe.utils.getdate()
-        inv.posting_date = min(earliest_date.date(), today_date) if earliest_date else today_date
+        inv.posting_date = earliest_date.date() if earliest_date else today_date
         if inv.due_date != latest_date.date() if latest_date else now():
             # Only set due_date if it is different from posting_date
             inv.due_date = latest_date.date() if latest_date else now()
