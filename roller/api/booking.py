@@ -78,6 +78,163 @@ def handle_roller_webhook():
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Roller Webhook Error")
 
+# Roller booking statuses that mean the whole booking was cancelled / fully refunded.
+CANCELLED_STATUSES = {"Cancelled", "Refunded"}
+
+
+def _set_booking_msg(booking_name, message):
+    frappe.db.set_value("Roller Booking", booking_name, "message", message)
+
+
+def _link_booking(booking_name, invoice_name, message=None):
+    """Link a Roller Booking to its Sales Invoice (and optionally set a message)."""
+    frappe.db.set_value("Roller Booking", booking_name, "sales_invoice", invoice_name)
+    if message:
+        _set_booking_msg(booking_name, message)
+
+
+def _handle_full_cancellation(booking_name, settings, invoice_name):
+    """Reverse an invoiced booking that Roller has fully cancelled / refunded.
+
+    - No invoice yet         -> nothing to reverse (booking was never invoiced).
+    - Draft invoice (unpaid) -> delete it; nothing was ever finalised.
+    - Already cancelled       -> leave it; just record the message.
+    - Submitted invoice       -> create a submitted Sales Return (credit note), once.
+    """
+    if not invoice_name:
+        _set_booking_msg(booking_name, _("Booking cancelled, but no invoice exists to reverse."))
+        return
+
+    inv = frappe.get_doc("Sales Invoice", invoice_name)
+
+    if inv.docstatus == 0:  # draft / unpaid -> nothing was finalised, just remove it
+        frappe.delete_doc("Sales Invoice", inv.name, ignore_permissions=True, force=True)
+        _set_booking_msg(booking_name, _("Booking cancelled; draft invoice {0} deleted.").format(invoice_name))
+        return
+
+    if inv.docstatus == 2:  # already cancelled
+        _set_booking_msg(booking_name, _("Booking cancelled; invoice {0} was already cancelled.").format(invoice_name))
+        return
+
+    # Submitted invoice: guard against creating a second return for the same invoice.
+    existing_return = frappe.db.exists(
+        "Sales Invoice", {"return_against": inv.name, "docstatus": ["<", 2]}
+    )
+    if existing_return:
+        _set_booking_msg(booking_name, _("Return {0} already exists for invoice {1}.").format(existing_return, inv.name))
+        return
+
+    return_invoice = make_sales_return(inv.name)
+    for item in return_invoice.items:
+        item.qty = -abs(item.qty)  # make_sales_return already negates; keep it defensive
+    return_invoice.naming_series = settings.sales_return_naming_series or "ACC-SINV-RET-.YYYY.-"
+    # Roller invoices are post-dated to the (possibly future) booking date, and ERPNext
+    # forbids a return dated before its original invoice. Anchor the return to the
+    # original invoice's posting datetime so the submit never fails on that check.
+    return_invoice.set_posting_time = 1
+    return_invoice.posting_date = inv.posting_date
+    return_invoice.posting_time = inv.posting_time
+    return_invoice.save(ignore_permissions=True)
+    return_invoice.submit()
+
+    frappe.db.set_value("Roller Booking", booking_name, "sales_invoice", return_invoice.name)
+    _set_booking_msg(booking_name, _("Sales Invoice (Return) {0} created successfully.").format(return_invoice.name))
+
+
+def _roller_item_qty_map(items):
+    """Aggregate a Roller booking payload's items into {item_code: total_qty}.
+
+    Invoice lines are created with item_code = ROLLER-{productId} (see get_or_create_item),
+    so we key on the same value to line the two sides up.
+    """
+    qty_map = defaultdict(float)
+    for it in items or []:
+        qty_map[f"ROLLER-{it.get('productId')}"] += float(it.get("quantity") or 1)
+    return qty_map
+
+
+def _handle_partial_refund(booking_doc, settings, inv, booking):
+    """A submitted invoice can't be edited, so when Roller lowers item quantities we
+    issue a partial Sales Return (credit note) for just the decrease.
+
+    Decrease per item = original invoiced qty - qty in the new payload, minus whatever
+    has already been returned (so replayed events don't double-refund). If nothing
+    decreased (pure replay, partial payment, or a quantity increase we can't apply to a
+    submitted invoice) it's a no-op apart from keeping the booking linked.
+    """
+    # Original invoiced qty per item (the submitted invoice is never modified).
+    original_qty = defaultdict(float)
+    for line in inv.items:
+        original_qty[line.item_code] += float(line.qty)
+
+    new_qty = _roller_item_qty_map(booking.get("items", []))
+
+    # Qty already credited back across any prior returns for this invoice.
+    already_returned = defaultdict(float)
+    prior_returns = frappe.get_all(
+        "Sales Invoice",
+        filters={"return_against": inv.name, "docstatus": ["<", 2]},
+        pluck="name",
+    )
+    for r in prior_returns:
+        for line in frappe.get_doc("Sales Invoice", r).items:
+            already_returned[line.item_code] += abs(float(line.qty))
+
+    to_return = {}
+    for item_code, orig in original_qty.items():
+        delta = (orig - new_qty.get(item_code, 0)) - already_returned.get(item_code, 0)
+        if delta > 0:
+            to_return[item_code] = delta
+
+    if not to_return:
+        _link_booking(
+            booking_doc.name, inv.name,
+            _("Sales Invoice {0} already submitted; no item reduction to refund.").format(inv.name),
+        )
+        return
+
+    return_invoice = make_sales_return(inv.name)
+
+    # make_sales_return negates the full original quantities; trim each line down to the
+    # outstanding decrease and drop lines that aren't being refunded.
+    remaining = dict(to_return)
+    kept_lines = []
+    for line in return_invoice.items:
+        want = remaining.get(line.item_code, 0)
+        if want <= 0:
+            continue
+        take = min(want, abs(float(line.qty)))
+        line.qty = -take
+        remaining[line.item_code] = want - take
+        kept_lines.append(line)
+    return_invoice.set("items", kept_lines)
+
+    return_invoice.naming_series = settings.sales_return_naming_series or "ACC-SINV-RET-.YYYY.-"
+    # Same constraint as a full return: anchor to the original invoice's posting datetime
+    # so ERPNext never rejects the return for being dated before its source invoice.
+    return_invoice.set_posting_time = 1
+    return_invoice.posting_date = inv.posting_date
+    return_invoice.posting_time = inv.posting_time
+    return_invoice.save(ignore_permissions=True)
+
+    # POS invoices carry a payment equal to the grand total; make_sales_return copies the
+    # full (negative) payment, so after trimming the lines we re-point it at the partial
+    # grand total to keep the credit note fully settled and pass POS validation.
+    if return_invoice.is_pos and return_invoice.get("payments"):
+        mode = return_invoice.payments[0].mode_of_payment or settings.default_mode_of_payment or "Cash"
+        return_invoice.set("payments", [{"mode_of_payment": mode, "amount": return_invoice.grand_total}])
+        return_invoice.set_paid_amount()
+        return_invoice.save(ignore_permissions=True)
+
+    return_invoice.submit()
+
+    frappe.db.set_value("Roller Booking", booking_doc.name, "sales_invoice", return_invoice.name)
+    _set_booking_msg(
+        booking_doc.name,
+        _("Partial Sales Invoice (Return) {0} created for {1}.").format(return_invoice.name, inv.name),
+    )
+
+
 @frappe.whitelist()
 def make_invoice_from_roller_booking(booking):
     try:
@@ -121,32 +278,15 @@ def make_invoice_from_roller_booking(booking):
         customer_id = booking.get("customerId")
         status = booking.get("status")
         
-        # Check if invoice exists
-        existing_invoice = frappe.db.exists("Sales Invoice", {"custom_roller_unique_id": uniqueId})
+        # Check if invoice exists (the original, never a credit note we created for it)
+        existing_invoice = frappe.db.exists(
+            "Sales Invoice", {"custom_roller_unique_id": uniqueId, "is_return": 0}
+        )
 
-        # Cancel event
-        if event_type == 3:
-            if existing_invoice:
-                inv = frappe.get_doc("Sales Invoice", {"custom_roller_unique_id": uniqueId})
-                if inv.docstatus == 1:
-                    return_invoice = make_sales_return(inv.name)
-                    for item in return_invoice.items:
-                        item.qty = -abs(item.qty)  # Ensure it's negative
-                    # return_invoice.is_return = 1
-                    # return_invoice.return_against = inv.name
-                    return_invoice.naming_series = settings.sales_return_naming_series or "ACC-SINV-RET-.YYYY.-"
-                    
-                    print(str(return_invoice.return_against))
-                    print(str(inv.posting_date), str(inv.posting_time))
-                    print(str(return_invoice.posting_date), str(return_invoice.posting_time))
-                    return_invoice.save(ignore_permissions=True)
-                    return_invoice.submit()
-
-                    frappe.db.set_value("Roller Booking", booking_doc.name, "sales_invoice", return_invoice.name)
-                    frappe.db.set_value("Roller Booking", booking_doc.name, "message", _("Sales Invoice (Return) {0} created successfully.").format(return_invoice.name))
-            return
-
-        if status == "Cancelled":
+        # Full cancellation / refund: Roller signals this via eventType 3 (webhook) or a
+        # cancelled booking status (which is also how it arrives through Fetch Bookings).
+        if event_type == 3 or status in CANCELLED_STATUSES:
+            _handle_full_cancellation(booking_doc.name, settings, existing_invoice)
             return
 
         # Create or Update
@@ -193,11 +333,13 @@ def make_invoice_from_roller_booking(booking):
             inv.custom_roller_booking_reference = booking_reference
             inv.custom_roller_unique_id = uniqueId
         else:
-            inv = frappe.get_doc("Sales Invoice", {"custom_roller_unique_id": uniqueId})
+            inv = frappe.get_doc("Sales Invoice", {"custom_roller_unique_id": uniqueId, "is_return": 0})
             if inv.docstatus == 1:
-                frappe.log_error("Roller Webhook Error", "Cannot modify submitted invoice {0}".format(inv.name))
-                frappe.db.set_value("Roller Booking", booking_doc.name, "message", _("Cannot modify submitted invoice {0}.").format(inv.name))
-                return  # Do not modify submitted invoices
+                # Submitted invoices can't be edited. If Roller has lowered item quantities,
+                # issue a partial Sales Return for the decrease; otherwise it's an idempotent
+                # no-op that just keeps the booking linked to its invoice.
+                _handle_partial_refund(booking_doc, settings, inv, booking)
+                return  # Submitted invoices are not modified
               
         # print(customer.name)
         # inv.name = invoice_name
@@ -311,12 +453,17 @@ def make_invoice_from_roller_booking(booking):
             # inv.due_date = now()
             inv.set("payment_schedule", [])
             inv.save(ignore_permissions=True)
+            # Link before submit: if submit() raises, the booking still points to its invoice
+            # instead of being left orphaned.
+            _link_booking(booking_doc.name, inv.name)
             inv.submit()
         else:
             inv.save(ignore_permissions=True)
 
-        frappe.db.set_value("Roller Booking", booking_doc.name, "sales_invoice", inv.name)
-        frappe.db.set_value("Roller Booking", booking_doc.name, "message", _("Sales Invoice {0} created successfully.").format(inv.name))
+        _link_booking(
+            booking_doc.name, inv.name,
+            _("Sales Invoice {0} created successfully.").format(inv.name),
+        )
 
 
     except Exception as e:
@@ -424,11 +571,22 @@ def fetch_bookings_from_roller(start_date=None, end_date=None):
 
     print(f"Total bookings fetched: {len(all_items)}")
     for booking_reference, items in grouped.items():
-        if frappe.db.exists("Roller Booking", {"booking_reference": booking_reference}):
+        first = items[0]
+        booking_status = first.get("bookingStatus", "PendingPayment")
+        existing_booking = frappe.db.exists("Roller Booking", {"booking_reference": booking_reference})
+
+        if existing_booking:
+            # Already imported. The only update we act on is a later cancellation/refund:
+            # reverse the existing invoice (handles the Paid-then-refunded case via fetch).
+            if booking_status in CANCELLED_STATUSES:
+                invoice_name = frappe.db.exists(
+                    "Sales Invoice", {"custom_roller_unique_id": first.get("bookingUniqueId")}
+                )
+                _handle_full_cancellation(existing_booking, settings, invoice_name)
+                frappe.db.commit()
             continue
 
         frappe.logger().info("Processing booking reference: {}".format(booking_reference))
-        first = items[0]
         booking = {
             "amountOwing": 0.0,
             "bookingReference": booking_reference,
@@ -527,3 +685,47 @@ def get_or_create_item(item_data):
     doc.custom_roller_product_id = product_id
     doc.save(ignore_permissions=True)
     return doc
+
+
+@frappe.whitelist()
+def reconcile_booking_invoices():
+    """Backfill `sales_invoice` on Roller Bookings that already have an invoice in the
+    system but no link — e.g. bookings created before linking was made submit-safe.
+
+    A booking is matched to its invoice by Roller unique id first, then by booking
+    reference; in both cases we only match the original invoice (is_return = 0).
+    Bookings that were never invoiced (e.g. cancelled before invoicing) are left as-is.
+    """
+    bookings = frappe.get_all(
+        "Roller Booking",
+        filters={"sales_invoice": ["in", ["", None]]},
+        fields=["name", "booking_reference", "response"],
+    )
+
+    linked = 0
+    for b in bookings:
+        unique_id = None
+        if b.response:
+            try:
+                unique_id = json.loads(b.response).get("data", {}).get("booking", {}).get("uniqueId")
+            except Exception:
+                unique_id = None
+
+        invoice = None
+        if unique_id:
+            invoice = frappe.db.exists(
+                "Sales Invoice", {"custom_roller_unique_id": unique_id, "is_return": 0}
+            )
+        if not invoice and b.booking_reference:
+            invoice = frappe.db.exists(
+                "Sales Invoice", {"custom_roller_booking_reference": b.booking_reference, "is_return": 0}
+            )
+
+        if invoice:
+            _link_booking(b.name, invoice, _("Sales Invoice {0} linked (reconciled).").format(invoice))
+            linked += 1
+
+    frappe.db.commit()
+    summary = "Reconciled {0} of {1} unlinked bookings.".format(linked, len(bookings))
+    frappe.logger().info(summary)
+    return summary
