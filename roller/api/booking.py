@@ -144,12 +144,17 @@ def _handle_full_cancellation(booking_name, settings, invoice_name):
 def _roller_item_qty_map(items):
     """Aggregate a Roller booking payload's items into {item_code: total_qty}.
 
-    Invoice lines are created with item_code = ROLLER-{productId} (see get_or_create_item),
-    so we key on the same value to line the two sides up.
+    The invoice line's item_code is whatever get_or_create_item resolved the productId to:
+    an existing Item matched by custom_roller_product_id (which can be any code, e.g.
+    "1850040"), or a freshly created "ROLLER-{productId}". We resolve the same way here so
+    the keys line up with the invoice lines — assuming the "ROLLER-" prefix would silently
+    miss pre-existing items and credit back the wrong quantity.
     """
     qty_map = defaultdict(float)
     for it in items or []:
-        qty_map[f"ROLLER-{it.get('productId')}"] += float(it.get("quantity") or 1)
+        product_id = it.get("productId")
+        item_code = frappe.db.get_value("Item", {"custom_roller_product_id": product_id}, "name")
+        qty_map[item_code or f"ROLLER-{product_id}"] += float(it.get("quantity") or 1)
     return qty_map
 
 
