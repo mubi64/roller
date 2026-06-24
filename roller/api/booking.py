@@ -144,21 +144,16 @@ def _handle_full_cancellation(booking_name, settings, invoice_name):
 def _roller_item_qty_map(items):
     """Aggregate a Roller booking payload's items into {item_code: total_qty}.
 
-    The invoice line's item_code is whatever get_or_create_item resolved the productId to:
-    an existing Item matched by custom_roller_product_id (which can be any code, e.g.
-    "1850040"), or a freshly created "ROLLER-{productId}". We resolve the same way here so
-    the keys line up with the invoice lines — assuming the "ROLLER-" prefix would silently
-    miss pre-existing items and credit back the wrong quantity.
+    Invoice lines are created with item_code = ROLLER-{productId} (see get_or_create_item),
+    so we key on the same value to line the two sides up.
     """
     qty_map = defaultdict(float)
     for it in items or []:
-        product_id = it.get("productId")
-        item_code = frappe.db.get_value("Item", {"custom_roller_product_id": product_id}, "name")
-        qty_map[item_code or f"ROLLER-{product_id}"] += float(it.get("quantity") or 1)
+        qty_map[f"ROLLER-{it.get('productId')}"] += float(it.get("quantity") or 1)
     return qty_map
 
 
-def _handle_partial_refund(booking_doc, settings, inv, booking, record_noop=True):
+def _handle_partial_refund(booking_doc, settings, inv, booking):
     """A submitted invoice can't be edited, so when Roller lowers item quantities we
     issue a partial Sales Return (credit note) for just the decrease.
 
@@ -166,9 +161,6 @@ def _handle_partial_refund(booking_doc, settings, inv, booking, record_noop=True
     has already been returned (so replayed events don't double-refund). If nothing
     decreased (pure replay, partial payment, or a quantity increase we can't apply to a
     submitted invoice) it's a no-op apart from keeping the booking linked.
-
-    `record_noop` is set False by the fetch path, which re-checks every existing booking
-    each sync and shouldn't overwrite its message when there's nothing to refund.
     """
     # Original invoiced qty per item (the submitted invoice is never modified).
     original_qty = defaultdict(float)
@@ -195,11 +187,10 @@ def _handle_partial_refund(booking_doc, settings, inv, booking, record_noop=True
             to_return[item_code] = delta
 
     if not to_return:
-        if record_noop:
-            _link_booking(
-                booking_doc.name, inv.name,
-                _("Sales Invoice {0} already submitted; no item reduction to refund.").format(inv.name),
-            )
+        _link_booking(
+            booking_doc.name, inv.name,
+            _("Sales Invoice {0} already submitted; no item reduction to refund.").format(inv.name),
+        )
         return
 
     return_invoice = make_sales_return(inv.name)
@@ -585,28 +576,14 @@ def fetch_bookings_from_roller(start_date=None, end_date=None):
         existing_booking = frappe.db.exists("Roller Booking", {"booking_reference": booking_reference})
 
         if existing_booking:
-            # Already imported. React to later changes against the original invoice:
-            #  - full cancellation/refund      -> reverse the whole invoice
-            #  - item quantity reduced (submitted) -> partial credit note for the decrease
-            invoice_name = frappe.db.exists(
-                "Sales Invoice",
-                {"custom_roller_unique_id": first.get("bookingUniqueId"), "is_return": 0},
-            )
+            # Already imported. The only update we act on is a later cancellation/refund:
+            # reverse the existing invoice (handles the Paid-then-refunded case via fetch).
             if booking_status in CANCELLED_STATUSES:
+                invoice_name = frappe.db.exists(
+                    "Sales Invoice", {"custom_roller_unique_id": first.get("bookingUniqueId")}
+                )
                 _handle_full_cancellation(existing_booking, settings, invoice_name)
                 frappe.db.commit()
-            elif invoice_name:
-                inv = frappe.get_doc("Sales Invoice", invoice_name)
-                if inv.docstatus == 1:
-                    payload = {"items": [
-                        {"productId": int(it["productId"]), "quantity": it.get("quantity", 1)}
-                        for it in items
-                    ]}
-                    _handle_partial_refund(
-                        frappe.get_doc("Roller Booking", existing_booking),
-                        settings, inv, payload, record_noop=False,
-                    )
-                    frappe.db.commit()
             continue
 
         frappe.logger().info("Processing booking reference: {}".format(booking_reference))
