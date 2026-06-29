@@ -6,3 +6,5 @@ tags
 node_modules
 __pycache__
 .codex
+
+PARTIAL_REFUND_SESSION_NOTES.md
