@@ -120,9 +120,23 @@ def save_customer_to_erpnext(c, existing_customers):
     customer.customer_name = customer_name or f"Roller Customer {roller_customer_id}"
     customer.customer_type = "Individual"
     customer.customer_group = "All Customer Groups"
-    customer.email_id = email
     customer.custom_roller_customer_id = roller_customer_id
     customer.flags.ignore_permissions = True
     customer.save()
+
+    if email:
+        contact = frappe.new_doc("Contact")
+        contact.first_name = c.get("firstName", "") or customer.customer_name
+        contact.last_name = c.get("lastName", "")
+        contact.append("email_ids", {
+            "email_id": email,
+            "is_primary": 1
+        })
+        contact.append("links", {
+            "link_doctype": "Customer",
+            "link_name": customer.name
+        })
+        contact.flags.ignore_permissions = True
+        contact.save()
 
     existing_customers[roller_customer_id] = customer.name

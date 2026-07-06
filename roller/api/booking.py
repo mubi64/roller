@@ -694,10 +694,27 @@ def make_invoice_from_roller_booking(booking):
         
         if status == "Paid" or status == "PartiallyPaid":
             inv.is_pos = 1
-            inv.set("payments", [{
-                "mode_of_payment": settings.default_mode_of_payment or "Cash",  # Or a specific one
-                "amount": float(float(booking.get("total") or 0) - float(booking.get("remainder") or 0))
-            }])
+            paid_amount = float(float(booking.get("total") or 0) - float(booking.get("remainder") or 0))
+            roller_payments = booking.get("payments", [])
+            if roller_payments:
+                inv_payments = []
+                for p in roller_payments:
+                    method_name = (
+                        p.get("paymentMethod") or p.get("method") or p.get("type")
+                        or settings.default_mode_of_payment or "Cash"
+                    )
+                    if not frappe.db.exists("Mode of Payment", method_name):
+                        method_name = settings.default_mode_of_payment or "Cash"
+                    inv_payments.append({
+                        "mode_of_payment": method_name,
+                        "amount": float(p.get("amount") or 0)
+                    })
+                inv.set("payments", inv_payments)
+            else:
+                inv.set("payments", [{
+                    "mode_of_payment": settings.default_mode_of_payment or "Cash",
+                    "amount": paid_amount
+                }])
             inv.set_paid_amount()
 
         
