@@ -525,7 +525,7 @@ def make_invoice_from_roller_booking(booking):
 
         # Full cancellation / refund: Roller signals this via eventType 3 (webhook) or a
         # cancelled booking status (which is also how it arrives through Fetch Bookings).
-        _, previous_booking = _get_previous_booking(booking_doc)
+        _prev_name, previous_booking = _get_previous_booking(booking_doc)
 
         if event_type == 3 or status in CANCELLED_STATUSES:
             _handle_full_cancellation(
@@ -551,7 +551,7 @@ def make_invoice_from_roller_booking(booking):
 
         # Create or Update
         if customer_id:
-            customer = get_or_create_customer(customer_id, booking.get("name"), settings.default_address)
+            customer = get_or_create_customer(customer_id, booking.get("name"), settings.default_address, booking.get("customerEmail") or booking.get("email"))
         else:
             default_customer = settings.default_customer
             customer = frappe.get_doc("Customer", default_customer)
@@ -733,7 +733,7 @@ def make_invoice_from_roller_booking(booking):
 
         _link_booking(
             booking_doc.name, inv.name,
-            _("Sales Invoice {0} created successfully.").format(inv.name),
+            "Sales Invoice {0} created successfully.".format(inv.name),
         )
 
 
@@ -741,7 +741,7 @@ def make_invoice_from_roller_booking(booking):
         if "booking_doc" in locals():
             _set_booking_msg(
                 booking_doc.name,
-                _("Roller invoice processing failed. Check Error Log for details."),
+                "Roller invoice processing failed. Check Error Log for details.",
             )
         frappe.log_error(frappe.get_traceback(), "Roller Webhook Error")
         # return {"status": "error", "message": str(e)}
@@ -961,12 +961,12 @@ def fetch_bookings_from_roller(start_date=None, end_date=None):
         
 
 # Helper: Create/Get Customer
-def get_or_create_customer(customer_id, name, default_address):
+def get_or_create_customer(customer_id, name, default_address, email=None):
     try:
         customer = frappe.db.get_value("Customer", {"custom_roller_customer_id": customer_id})
         if customer:
             return frappe.get_doc("Customer", customer)
-        
+
         doc = frappe.new_doc("Customer")
         doc.customer_name = name or f"Roller Customer {customer_id}"
         doc.customer_type = "Individual"
@@ -975,6 +975,15 @@ def get_or_create_customer(customer_id, name, default_address):
         doc.customer_primary_address = default_address
         doc.custom_roller_customer_id = customer_id
         doc.save(ignore_permissions=True)
+
+        if email:
+            contact = frappe.new_doc("Contact")
+            contact.first_name = name or f"Roller Customer {customer_id}"
+            contact.append("email_ids", {"email_id": email, "is_primary": 1})
+            contact.append("links", {"link_doctype": "Customer", "link_name": doc.name})
+            contact.flags.ignore_permissions = True
+            contact.save()
+
         return doc
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Roller Webhook Error")
