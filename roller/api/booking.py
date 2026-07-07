@@ -695,7 +695,11 @@ def make_invoice_from_roller_booking(booking):
         if status == "Paid" or status == "PartiallyPaid":
             inv.is_pos = 1
             paid_amount = float(float(booking.get("total") or 0) - float(booking.get("remainder") or 0))
-            roller_payments = booking.get("payments", [])
+            roller_payments = fetch_roller_booking_payments(
+                booking_reference,
+                booking.get("createdDate", ""),
+                settings,
+            )
             if roller_payments:
                 inv_payments = []
                 for p in roller_payments:
@@ -959,6 +963,57 @@ def fetch_bookings_from_roller(start_date=None, end_date=None):
     frappe.logger().info("Bookings sync completed from {} to {}.".format(start_date, end_date))
     return "Bookings sync completed for given dates."
         
+
+# Helper: Fetch payments for a booking from Roller /data/bookingpayments
+def fetch_roller_booking_payments(booking_reference, booking_date, settings):
+    """Return list of {paymentMethod, amount} for a booking from the Roller payments API.
+
+    The endpoint does not filter by bookingReference server-side, so we fetch the full
+    day and match client-side. Handles split payments (cash + cheque, etc.) naturally.
+    """
+    try:
+        from datetime import datetime, timedelta
+
+        base_url = settings.playground_url if settings.environment == "Playground" else settings.live_url
+        access_token = settings.access_token
+        token_url = f"{base_url}/token"
+
+        day = datetime.strptime(booking_date[:10], "%Y-%m-%d")
+        start_date = day.strftime("%Y-%m-%d")
+        end_date = (day + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        url = (
+            f"{base_url}/data/bookingpayments?"
+            f"pageSize=500&pageNumber=1&startDate={start_date}&endDate={end_date}"
+        )
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        response = requests.get(url, headers=headers, timeout=15)
+
+        if response.status_code == 401:
+            access_token = get_new_access_token(token_url, settings.client_id, settings.client_secret)
+            if not access_token:
+                return []
+            frappe.db.set_single_value("Roller Settings", "access_token", access_token)
+            headers["Authorization"] = f"Bearer {access_token}"
+            response = requests.get(url, headers=headers, timeout=15)
+
+        if not response.ok:
+            return []
+
+        return [
+            {"paymentMethod": p.get("paymentMethod"), "amount": float(p.get("total") or 0)}
+            for p in response.json().get("items", [])
+            if str(p.get("bookingReference")) == str(booking_reference)
+        ]
+
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Roller Fetch Booking Payments Error")
+        return []
+
 
 # Helper: Create/Get Customer
 def get_or_create_customer(customer_id, name, default_address, email=None):
