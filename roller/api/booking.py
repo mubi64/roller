@@ -709,6 +709,9 @@ def make_invoice_from_roller_booking(booking):
                     )
                     if not frappe.db.exists("Mode of Payment", method_name):
                         method_name = settings.default_mode_of_payment or "Cash"
+                    elif not frappe.db.exists("Mode of Payment Account", {"parent": method_name, "company": inv.company}):
+                        # Mode of Payment exists but has no default account for this company — fall back
+                        method_name = settings.default_mode_of_payment or "Cash"
                     inv_payments.append({
                         "mode_of_payment": method_name,
                         "amount": float(p.get("amount") or 0)
