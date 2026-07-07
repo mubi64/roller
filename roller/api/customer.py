@@ -145,13 +145,13 @@ def save_customer_to_erpnext(c, existing_customers):
 def fetch_and_attach_customer_email(roller_customer_id, customer_doc_name):
     """Search recent Roller customer pages for roller_customer_id and attach a Contact with email.
 
-    The Roller API requires startDate + endDate, so we search backwards day-by-day from today
-    up to MAX_DAYS_BACK. Stops as soon as the customer is found.
-    Called as a background job from get_or_create_customer.
+    The Roller API requires startDate + endDate, so we check a ±2-day window around today
+    (covers timezone offsets and same-day booking edge cases). Stops as soon as the customer
+    is found. Called inline from get_or_create_customer — kept fast by limiting to 5 days.
     """
     from datetime import date, timedelta
 
-    MAX_DAYS_BACK = 30
+    MAX_DAYS_BACK = 5  # today + 2 days back + 2 days forward covers all timezone/date edge cases
 
     try:
         customer_doc = frappe.get_doc("Customer", customer_doc_name)
@@ -164,8 +164,10 @@ def fetch_and_attach_customer_email(roller_customer_id, customer_doc_name):
 
         today = date.today()
 
-        for days_back in range(MAX_DAYS_BACK):
-            day = today - timedelta(days=days_back)
+        # Search today +2 forward then backwards, so the most likely days are checked first
+        offsets = [0, 1, 2, -1, -2]
+        for offset in offsets:
+            day = today + timedelta(days=offset)
             start_date = day.strftime("%Y-%m-%d")
             end_date = (day + timedelta(days=1)).strftime("%Y-%m-%d")
 

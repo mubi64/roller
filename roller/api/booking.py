@@ -984,13 +984,8 @@ def get_or_create_customer(customer_id, name, default_address, email=None):
             contact.flags.ignore_permissions = True
             contact.save()
         else:
-            frappe.enqueue(
-                "roller.api.customer.fetch_and_attach_customer_email",
-                roller_customer_id=customer_id,
-                customer_doc_name=doc.name,
-                queue="short",
-                now=frappe.flags.in_test,
-            )
+            from roller.api.customer import fetch_and_attach_customer_email
+            fetch_and_attach_customer_email(customer_id, doc.name)
 
         return doc
     except Exception as e:
