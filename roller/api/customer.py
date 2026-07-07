@@ -140,3 +140,51 @@ def save_customer_to_erpnext(c, existing_customers):
         contact.save()
 
     existing_customers[roller_customer_id] = customer.name
+
+
+def fetch_and_attach_customer_email(roller_customer_id, customer_doc):
+    """Query Roller for a specific customer and attach a Contact with email if found."""
+    try:
+        settings = frappe.get_single("Roller Settings")
+        base_url = settings.playground_url if settings.environment == "Playground" else settings.live_url
+        access_token = settings.access_token
+        token_url = f"{base_url}/token"
+
+        url = (
+            f"{base_url}/data/customers?"
+            f"pageSize=500&pageNumber=1&customerId={roller_customer_id}"
+        )
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        response = requests.get(url, headers=headers, timeout=15)
+
+        if response.status_code == 401:
+            access_token = get_new_access_token(token_url, settings.client_id, settings.client_secret)
+            if not access_token:
+                return
+            frappe.db.set_single_value("Roller Settings", "access_token", access_token)
+            headers["Authorization"] = f"Bearer {access_token}"
+            response = requests.get(url, headers=headers, timeout=15)
+
+        if not response.ok:
+            return
+
+        for c in response.json().get("items", []):
+            if str(c.get("customerId")) != str(roller_customer_id):
+                continue
+            email = c.get("email")
+            if email:
+                contact = frappe.new_doc("Contact")
+                contact.first_name = c.get("firstName", "") or customer_doc.customer_name
+                contact.last_name = c.get("lastName", "")
+                contact.append("email_ids", {"email_id": email, "is_primary": 1})
+                contact.append("links", {"link_doctype": "Customer", "link_name": customer_doc.name})
+                contact.flags.ignore_permissions = True
+                contact.save()
+            return
+
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Roller Customer Email Fetch Error")
