@@ -10,7 +10,6 @@ from frappe import _
 from frappe.utils import flt, now
 
 from roller.api.roller import get_new_access_token
-from roller.api.customer import fetch_and_attach_customer_email
 
 
 @frappe.whitelist(allow_guest=True)
@@ -985,7 +984,13 @@ def get_or_create_customer(customer_id, name, default_address, email=None):
             contact.flags.ignore_permissions = True
             contact.save()
         else:
-            fetch_and_attach_customer_email(customer_id, doc)
+            frappe.enqueue(
+                "roller.api.customer.fetch_and_attach_customer_email",
+                roller_customer_id=customer_id,
+                customer_doc_name=doc.name,
+                queue="short",
+                now=frappe.flags.in_test,
+            )
 
         return doc
     except Exception as e:
