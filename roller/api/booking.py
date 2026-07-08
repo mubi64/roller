@@ -719,28 +719,18 @@ def make_invoice_from_roller_booking(booking):
                     settings,
                 )
             if roller_payments:
-                inv_payments = []
-                for p in roller_payments:
-                    method_name = (
-                        p.get("paymentMethod") or p.get("method") or p.get("type")
-                        or settings.default_mode_of_payment or "Cash"
-                    )
-                    if not frappe.db.exists("Mode of Payment", method_name):
-                        method_name = settings.default_mode_of_payment or "Cash"
-                    elif not frappe.db.exists("Mode of Payment Account", {"parent": method_name, "company": inv.company}):
-                        # Mode of Payment exists but has no default account for this company — fall back
-                        method_name = settings.default_mode_of_payment or "Cash"
-                    inv_payments.append({
-                        "mode_of_payment": method_name,
-                        "amount": float(p.get("amount") or 0)
-                    })
-                inv.set("payments", inv_payments)
+                inv.set("payments", _build_invoice_payments(roller_payments, settings, inv.company))
             else:
                 inv.set("payments", [{
                     "mode_of_payment": settings.default_mode_of_payment or "Cash",
                     "amount": paid_amount
                 }])
             inv.set_paid_amount()
+            # Whether the payments we attached actually add up to what Roller says is
+            # paid. Drives the submit decision below for a fully-paid booking.
+            payments_reconciled = (
+                flt(sum(flt(p.get("amount")) for p in roller_payments), 2) >= flt(paid_amount, 2)
+            )
 
         
         if status == "Paid":
@@ -752,7 +742,23 @@ def make_invoice_from_roller_booking(booking):
             # Link before submit: if submit() raises, the booking still points to its invoice
             # instead of being left orphaned.
             _link_booking(booking_doc.name, inv.name)
-            inv.submit()
+            if payments_reconciled:
+                inv.submit()
+            else:
+                # The payments for this fully-paid booking aren't all in the reporting
+                # feed yet. Roller sends no webhook after "Paid", so submitting now would
+                # permanently lock in a short-paid invoice with no chance to correct it.
+                # Leave it as a draft and hand off to a background job that submits it
+                # once every payment has synced.
+                frappe.enqueue(
+                    "roller.api.booking.reconcile_and_submit_roller_invoice",
+                    queue="long",
+                    enqueue_after_commit=True,
+                    invoice_name=inv.name,
+                    booking_reference=booking_reference,
+                    booking_date=booking.get("createdDate", ""),
+                    expected_paid=paid_amount,
+                )
         else:
             inv.save(ignore_permissions=True)
 
@@ -1046,6 +1052,67 @@ def fetch_roller_booking_payments(booking_reference, booking_date, settings):
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Roller Fetch Booking Payments Error")
         return []
+
+
+def _build_invoice_payments(roller_payments, settings, company):
+    """Map Roller payments to Sales Invoice payment rows, falling back to the default
+    mode of payment when a method is unknown or has no account for the company."""
+    default = settings.default_mode_of_payment or "Cash"
+    rows = []
+    for p in roller_payments:
+        method_name = p.get("paymentMethod") or default
+        if not frappe.db.exists("Mode of Payment", method_name):
+            method_name = default
+        elif not frappe.db.exists("Mode of Payment Account", {"parent": method_name, "company": company}):
+            # Mode of Payment exists but has no default account for this company — fall back.
+            method_name = default
+        rows.append({
+            "mode_of_payment": method_name,
+            "amount": float(p.get("amount") or 0),
+        })
+    return rows
+
+
+def reconcile_and_submit_roller_invoice(
+    invoice_name, booking_reference, booking_date, expected_paid,
+    max_attempts=20, interval=15,
+):
+    """Wait for Roller's reporting feed to list every payment for a fully-paid booking,
+    then attach them and submit the still-draft invoice.
+
+    Roller sends no webhook after a booking is fully paid, so when the reporting feed
+    lags at submit time we defer to this job rather than submit a short-paid invoice
+    that later events could never correct. Runs on the background worker, so a few
+    minutes of patient polling is fine (max_attempts * interval seconds).
+    """
+    settings = frappe.get_doc("Roller Settings")
+    fetched_total = 0
+    try:
+        for _ in range(max_attempts):
+            inv = frappe.get_doc("Sales Invoice", invoice_name)
+            if inv.docstatus != 0:
+                return  # already submitted or cancelled elsewhere
+
+            roller_payments = fetch_roller_booking_payments(booking_reference, booking_date, settings)
+            fetched_total = flt(sum(flt(p.get("amount")) for p in roller_payments), 2)
+            if fetched_total >= flt(expected_paid, 2):
+                inv.set("payments", _build_invoice_payments(roller_payments, settings, inv.company))
+                inv.set_paid_amount()
+                inv.set("payment_schedule", [])
+                inv.save(ignore_permissions=True)
+                inv.submit()
+                frappe.db.commit()
+                return
+
+            time.sleep(interval)
+
+        frappe.log_error(
+            "Invoice {0} (booking {1}) still short after {2} attempts: feed has {3}, expected {4}.".format(
+                invoice_name, booking_reference, max_attempts, fetched_total, expected_paid),
+            "Roller Payment Reconcile Timeout",
+        )
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Roller Payment Reconcile Error")
 
 
 # Helper: Create/Get Customer
