@@ -701,20 +701,23 @@ def make_invoice_from_roller_booking(booking):
                 booking.get("createdDate", ""),
                 settings,
             )
-            # A Paid/PartiallyPaid status means a payment exists, but the reporting
-            # feed can lag the webhook by a few seconds. Retry briefly before falling
-            # back to the default mode of payment (this runs inline in the webhook, so
-            # keep the total wait small).
-            if not roller_payments:
-                for _ in range(2):
-                    time.sleep(2)
-                    roller_payments = fetch_roller_booking_payments(
-                        booking_reference,
-                        booking.get("createdDate", ""),
-                        settings,
-                    )
-                    if roller_payments:
-                        break
+            # The reporting feed lags the webhook by a few seconds, so the payment that
+            # triggered this event may not be in the feed yet. This matters most on the
+            # final "Paid" event: it submits the invoice, and a submitted invoice can't
+            # be corrected afterwards, so a payment missing here means a permanently
+            # short-paid invoice. Retry until the fetched payments add up to the amount
+            # Roller says has been paid (total - remainder). Runs inline in the webhook,
+            # so keep the number of attempts small.
+            for _ in range(3):
+                fetched_total = flt(sum(flt(p.get("amount")) for p in roller_payments), 2)
+                if fetched_total >= flt(paid_amount, 2):
+                    break
+                time.sleep(2)
+                roller_payments = fetch_roller_booking_payments(
+                    booking_reference,
+                    booking.get("createdDate", ""),
+                    settings,
+                )
             if roller_payments:
                 inv_payments = []
                 for p in roller_payments:
