@@ -1,4 +1,5 @@
 import json
+import time
 import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -700,6 +701,20 @@ def make_invoice_from_roller_booking(booking):
                 booking.get("createdDate", ""),
                 settings,
             )
+            # A Paid/PartiallyPaid status means a payment exists, but the reporting
+            # feed can lag the webhook by a few seconds. Retry briefly before falling
+            # back to the default mode of payment (this runs inline in the webhook, so
+            # keep the total wait small).
+            if not roller_payments:
+                for _ in range(2):
+                    time.sleep(2)
+                    roller_payments = fetch_roller_booking_payments(
+                        booking_reference,
+                        booking.get("createdDate", ""),
+                        settings,
+                    )
+                    if roller_payments:
+                        break
             if roller_payments:
                 inv_payments = []
                 for p in roller_payments:
@@ -981,6 +996,8 @@ def fetch_roller_booking_payments(booking_reference, booking_date, settings):
         access_token = settings.access_token
         token_url = f"{base_url}/token"
 
+        # The endpoint rejects ranges wider than 1 day ("startDate and endDate must be
+        # within 1 day(s)"), so we must query a single day around the booking's createdDate.
         day = datetime.strptime(booking_date[:10], "%Y-%m-%d")
         start_date = day.strftime("%Y-%m-%d")
         end_date = (day + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -1007,8 +1024,18 @@ def fetch_roller_booking_payments(booking_reference, booking_date, settings):
         if not response.ok:
             return []
 
+        def _method(p):
+            # The live Data API returns "paymentMethod" (e.g. "Cheque"); the other
+            # names are cheap insurance in case a venue is on a different API version.
+            return (
+                p.get("paymentMethod")
+                or p.get("paymentType")
+                or p.get("method")
+                or p.get("type")
+            )
+
         return [
-            {"paymentMethod": p.get("paymentMethod"), "amount": float(p.get("total") or 0)}
+            {"paymentMethod": _method(p), "amount": float(p.get("total") or 0)}
             for p in response.json().get("items", [])
             if str(p.get("bookingReference")) == str(booking_reference)
         ]
